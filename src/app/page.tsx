@@ -309,6 +309,7 @@ export default function Home() {
         unconfirmedItems={unconfirmedItems}
         onMarkCollected={handleMarkCollected}
         onMarkLeftBehind={handleMarkLeftBehind}
+        onResolve={handleResolve}
       />
 
       <CaptureModal
