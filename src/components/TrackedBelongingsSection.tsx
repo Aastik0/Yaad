@@ -8,6 +8,7 @@ interface TrackedBelongingsSectionProps {
   onMarkCollected: (id: string) => void;
   onMarkUnconfirmed: (id: string) => void;
   onResolve: (id: string) => void;
+  onSelectItem?: (item: TrackedItem) => void;
   searchFilter: string;
 }
 
@@ -16,6 +17,7 @@ export const TrackedBelongingsSection: React.FC<TrackedBelongingsSectionProps> =
   onMarkCollected,
   onMarkUnconfirmed,
   onResolve,
+  onSelectItem,
   searchFilter,
 }) => {
   const [statusFilter, setStatusFilter] = useState<"all" | TrackedItemStatus>("all");
@@ -109,7 +111,10 @@ export const TrackedBelongingsSection: React.FC<TrackedBelongingsSectionProps> =
                   : "border-ivory-300"
               }`}
             >
-              <div>
+              <div
+                className="cursor-pointer"
+                onClick={() => onSelectItem && onSelectItem(item)}
+              >
                 {/* Item header: Category & Status */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] uppercase tracking-wider font-semibold text-stone-500">
@@ -119,7 +124,7 @@ export const TrackedBelongingsSection: React.FC<TrackedBelongingsSectionProps> =
                 </div>
 
                 {/* Item Name */}
-                <h3 className="text-base font-semibold text-forest-900 mt-2">
+                <h3 className="text-base font-semibold text-forest-900 mt-2 hover:text-forest-700 transition-colors">
                   {item.item_name}
                 </h3>
 

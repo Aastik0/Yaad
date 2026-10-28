@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { HeroCta } from "@/components/HeroCta";
 import { TrackedBelongingsSection } from "@/components/TrackedBelongingsSection";
@@ -8,32 +8,105 @@ import { RecentMemoriesFeed } from "@/components/RecentMemoriesFeed";
 import { DepartureSimulatorModal } from "@/components/DepartureSimulatorModal";
 import { PeopleMemorySection } from "@/components/PeopleMemorySection";
 import { CaptureModal } from "@/components/CaptureModal";
+import { RecallAnswerCard } from "@/components/RecallAnswerCard";
+import { ItemDetailModal } from "@/components/ItemDetailModal";
 import {
   INITIAL_TRACKED_ITEMS,
   INITIAL_OBSERVATIONS,
   INITIAL_PEOPLE_MEMORIES,
   DEMO_USER_ID,
 } from "@/data/fixtures";
+import {
+  getStoredTrackedItems,
+  setStoredTrackedItems,
+  getStoredObservations,
+  setStoredObservations,
+  getStoredPeople,
+  setStoredPeople,
+  resetToFixtures,
+} from "@/lib/storage";
 import { TrackedItem, ItemObservation, PersonMemory, CandidateItem } from "@/types";
-import { ShieldCheck, Info } from "lucide-react";
+import { ShieldCheck, Info, RotateCcw } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"belongings" | "people">("belongings");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
   const [isDepartureModalOpen, setIsDepartureModalOpen] = useState(false);
+  const [selectedItemForDetail, setSelectedItemForDetail] = useState<TrackedItem | null>(null);
+  const [dismissedRecallQuery, setDismissedRecallQuery] = useState<string | null>(null);
 
-  // Core state initialized with realistic fixtures
+  // Core state initialized from localStorage with fallback to fixtures
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>(INITIAL_TRACKED_ITEMS);
   const [observations, setObservations] = useState<ItemObservation[]>(INITIAL_OBSERVATIONS);
   const [peopleMemories, setPeopleMemories] = useState<PersonMemory[]>(INITIAL_PEOPLE_MEMORIES);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydrate from localStorage once mounted
+  useEffect(() => {
+    setTrackedItems(getStoredTrackedItems());
+    setObservations(getStoredObservations());
+    setPeopleMemories(getStoredPeople());
+    setIsHydrated(true);
+  }, []);
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    if (isHydrated) {
+      setStoredTrackedItems(trackedItems);
+    }
+  }, [trackedItems, isHydrated]);
+
+  useEffect(() => {
+    if (isHydrated) {
+      setStoredObservations(observations);
+    }
+  }, [observations, isHydrated]);
+
+  useEffect(() => {
+    if (isHydrated) {
+      setStoredPeople(peopleMemories);
+    }
+  }, [peopleMemories, isHydrated]);
 
   // Unconfirmed items count for badges and departure alerts
   const unconfirmedItems = trackedItems.filter(
     (item) => item.status === "tracked_unconfirmed" || item.status === "possibly_left_behind"
   );
 
-  // Item status transition handlers (BRD Section 8 & Section 9)
+  // Recall matching: find the most relevant tracked item for natural language query
+  const recallResult = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length < 3 || dismissedRecallQuery === searchQuery) return null;
+
+    // Direct name match or keyword match
+    const match = trackedItems.find((item) => {
+      const name = item.item_name.toLowerCase();
+      const cat = (item.category || "").toLowerCase();
+      const loc = item.last_location_description.toLowerCase();
+
+      // Check key tokens like "keys", "wallet", "glasses", "bottle", "card"
+      return (
+        name.includes(q) ||
+        q.includes(name) ||
+        (cat && q.includes(cat)) ||
+        loc.includes(q) ||
+        item.last_landmarks.some((lm) => q.includes(lm.toLowerCase()))
+      );
+    });
+
+    if (!match) return null;
+
+    const latestObs = observations.find(
+      (obs) =>
+        obs.item_name.toLowerCase() === match.item_name.toLowerCase() ||
+        obs.id === match.last_observation_id
+    );
+
+    return { item: match, latestObservation: latestObs };
+  }, [searchQuery, trackedItems, observations, dismissedRecallQuery]);
+
+  // Status transitions
   const handleMarkCollected = (id: string) => {
     setTrackedItems((prev) =>
       prev.map((item) =>
@@ -70,7 +143,25 @@ export default function Home() {
     );
   };
 
-  // Delete observation (privacy requirement)
+  // Item update & deletion (privacy requirement)
+  const handleUpdateItem = (updated: TrackedItem) => {
+    setTrackedItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    if (selectedItemForDetail?.id === updated.id) {
+      setSelectedItemForDetail(updated);
+    }
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    const toDelete = trackedItems.find((i) => i.id === itemId);
+    setTrackedItems((prev) => prev.filter((item) => item.id !== itemId));
+    if (toDelete) {
+      setObservations((prev) =>
+        prev.filter((obs) => obs.item_name.toLowerCase() !== toDelete.item_name.toLowerCase())
+      );
+    }
+    setSelectedItemForDetail(null);
+  };
+
   const handleDeleteObservation = (id: string) => {
     setObservations((prev) => prev.filter((obs) => obs.id !== id));
   };
@@ -91,6 +182,18 @@ export default function Home() {
 
   const handleDeletePerson = (id: string) => {
     setPeopleMemories((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  // Reset all to original fixture state
+  const handleResetData = () => {
+    if (confirm("Reset demo data back to default fixtures?")) {
+      resetToFixtures();
+      setTrackedItems(INITIAL_TRACKED_ITEMS);
+      setObservations(INITIAL_OBSERVATIONS);
+      setPeopleMemories(INITIAL_PEOPLE_MEMORIES);
+      setSearchQuery("");
+      setDismissedRecallQuery(null);
+    }
   };
 
   // Add confirmed candidates from capture modal
@@ -154,9 +257,22 @@ export default function Home() {
               onCaptureClick={() => setIsCaptureModalOpen(true)}
               onSimulateDeparture={() => setIsDepartureModalOpen(true)}
               searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
+              onSearchChange={(q) => {
+                setSearchQuery(q);
+                setDismissedRecallQuery(null);
+              }}
               unconfirmedCount={unconfirmedItems.length}
             />
+
+            {/* Contextual Grounded Recall Answer Card */}
+            {recallResult && (
+              <RecallAnswerCard
+                item={recallResult.item}
+                latestObservation={recallResult.latestObservation}
+                query={searchQuery}
+                onClose={() => setDismissedRecallQuery(searchQuery)}
+              />
+            )}
 
             {/* Belongings List Section */}
             <TrackedBelongingsSection
@@ -164,6 +280,7 @@ export default function Home() {
               onMarkCollected={handleMarkCollected}
               onMarkUnconfirmed={handleMarkUnconfirmed}
               onResolve={handleResolve}
+              onSelectItem={(item) => setSelectedItemForDetail(item)}
               searchFilter={searchQuery}
             />
 
@@ -200,7 +317,16 @@ export default function Home() {
         onConfirmCandidates={handleConfirmCandidates}
       />
 
-      {/* Accessible Footer */}
+      <ItemDetailModal
+        isOpen={!!selectedItemForDetail}
+        item={selectedItemForDetail}
+        observations={observations}
+        onClose={() => setSelectedItemForDetail(null)}
+        onUpdateItem={handleUpdateItem}
+        onDeleteItem={handleDeleteItem}
+      />
+
+      {/* Accessible Footer with Demo Controls */}
       <footer className="mt-auto border-t border-ivory-300 bg-ivory-50/70 py-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-charcoal-700">
           <div className="flex items-center gap-2">
@@ -215,10 +341,17 @@ export default function Home() {
               <Info className="w-3.5 h-3.5 text-sage-600" />
               Departure check is simulated; no background geofencing claimed.
             </span>
+            <button
+              onClick={handleResetData}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium text-stone-600 hover:text-charcoal-900 hover:bg-ivory-200 border border-ivory-300 transition-colors"
+              title="Reset data back to initial demo fixtures"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Demo Data</span>
+            </button>
           </div>
         </div>
       </footer>
     </div>
   );
 }
-
