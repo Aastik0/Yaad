@@ -96,6 +96,16 @@ export const RecallAnswerCard: React.FC<RecallAnswerCardProps> = ({
           </div>
         )}
 
+        {/* GPS Coordinates Origin */}
+        {item.coordinates && (
+          <div className="pt-1.5 border-t border-forest-100 flex items-center justify-between text-[11px] text-stone-600">
+            <span className="font-mono text-forest-800 bg-forest-50 px-2 py-0.5 rounded border border-forest-100 font-medium">
+              📍 Origin GPS: {item.coordinates.latitude}° N, {Math.abs(item.coordinates.longitude)}° W
+            </span>
+            <span>Geofence: {item.geofence_radius_meters || 50}m</span>
+          </div>
+        )}
+
         {/* Optional scene snapshot preview */}
         {latestObservation?.image_reference && (
           <div className="mt-2 pt-2 border-t border-ivory-200">

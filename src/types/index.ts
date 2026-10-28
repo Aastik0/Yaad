@@ -1,11 +1,12 @@
 /**
  * Core domain types for Yaad
  * Defined strictly according to the Yaad Business Requirements Document (BRD Section 9)
+ * Extended with Geolocation & Dementia Care Assistive Radius tracking.
  */
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'unknown';
 
-export type ObservationSource = 'browser_upload' | 'browser_camera' | 'manual';
+export type ObservationSource = 'browser_upload' | 'browser_camera' | 'glasses_sdk' | 'manual';
 
 export type TrackedItemStatus =
   | 'suggested'             // model proposed the item; not yet tracked
@@ -13,6 +14,13 @@ export type TrackedItemStatus =
   | 'collected'            // user explicitly confirmed taking the item
   | 'possibly_left_behind' // departure check occurred while item was unconfirmed
   | 'resolved';            // user resolved the reminder or corrected the record
+
+export interface GeoLocationCoordinates {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  place_name?: string;
+}
 
 export interface ItemObservation {
   id: string;
@@ -26,6 +34,7 @@ export interface ItemObservation {
   observed_at: string; // capture timestamp (ISO)
   source: ObservationSource;
   image_reference?: string;
+  coordinates?: GeoLocationCoordinates;
   user_confirmed: boolean;
   created_at: string;
   deleted_at?: string;
@@ -42,6 +51,8 @@ export interface TrackedItem {
   last_landmarks: string[];
   last_observed_at: string;
   image_reference?: string;
+  coordinates?: GeoLocationCoordinates;
+  geofence_radius_meters?: number; // default e.g. 50m
   updated_at: string;
 }
 
@@ -66,6 +77,7 @@ export interface CandidateItem {
   landmarks: string[];
   description: string;
   confidence: ConfidenceLevel;
+  coordinates?: GeoLocationCoordinates;
   is_selected: boolean;
 }
 
@@ -80,4 +92,3 @@ export interface UsageLedgerEntry {
   status: 'success' | 'rate_limited' | 'error' | 'kill_switch_blocked';
   notes?: string;
 }
-

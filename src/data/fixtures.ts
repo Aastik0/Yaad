@@ -13,6 +13,13 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "On the wooden coffee table near the ceramic coffee mug",
     last_landmarks: ["wooden coffee table", "ceramic coffee mug", "open notebook"],
     last_observed_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(), // 42 mins ago
+    coordinates: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      accuracy: 8,
+      place_name: "Mission District Artisan Cafe",
+    },
+    geofence_radius_meters: 50,
     updated_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
   },
   {
@@ -25,6 +32,13 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "On the café round bistro table next to the laptop charger",
     last_landmarks: ["round bistro table", "laptop charger", "water glass"],
     last_observed_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(), // 25 mins ago
+    coordinates: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      accuracy: 8,
+      place_name: "Mission District Artisan Cafe",
+    },
+    geofence_radius_meters: 50,
     updated_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
   },
   {
@@ -37,6 +51,13 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "Beside the backpack on the side chair",
     last_landmarks: ["side chair", "green canvas backpack"],
     last_observed_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(), // 95 mins ago
+    coordinates: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      accuracy: 8,
+      place_name: "Mission District Artisan Cafe",
+    },
+    geofence_radius_meters: 50,
     updated_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
   },
   {
@@ -49,6 +70,13 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "Left on the hall console table near the front door key dish",
     last_landmarks: ["hall console table", "ceramic key dish", "mail stack"],
     last_observed_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(), // 3 hours ago
+    coordinates: {
+      latitude: 37.7785,
+      longitude: -122.4121,
+      accuracy: 10,
+      place_name: "Home Entrance Hall",
+    },
+    geofence_radius_meters: 30,
     updated_at: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
   },
 ];
@@ -65,6 +93,12 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "high",
     observed_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
     source: "browser_camera",
+    coordinates: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      accuracy: 8,
+      place_name: "Mission District Artisan Cafe",
+    },
     user_confirmed: true,
     created_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
   },
@@ -79,6 +113,12 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "high",
     observed_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
     source: "browser_upload",
+    coordinates: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      accuracy: 8,
+      place_name: "Mission District Artisan Cafe",
+    },
     user_confirmed: true,
     created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
   },
@@ -93,6 +133,12 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "medium",
     observed_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
     source: "browser_upload",
+    coordinates: {
+      latitude: 37.7749,
+      longitude: -122.4194,
+      accuracy: 8,
+      place_name: "Mission District Artisan Cafe",
+    },
     user_confirmed: true,
     created_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
   },
@@ -107,6 +153,12 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "high",
     observed_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
     source: "browser_upload",
+    coordinates: {
+      latitude: 37.7785,
+      longitude: -122.4121,
+      accuracy: 10,
+      place_name: "Home Entrance Hall",
+    },
     user_confirmed: true,
     created_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
   },

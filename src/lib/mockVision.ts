@@ -8,7 +8,7 @@ import { CandidateItem } from "@/types";
 interface MockAnalysisInput {
   imageName?: string;
   requestedQuery?: string;
-  source: "browser_upload" | "browser_camera";
+  source?: "browser_upload" | "browser_camera" | "manual";
 }
 
 export async function analyzeSceneWithMock(

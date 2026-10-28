@@ -12,9 +12,12 @@ import {
   Edit2,
   Trash2,
   Tag,
+  MapPin,
+  Mic,
+  Compass,
 } from "lucide-react";
-import { CandidateItem } from "@/types";
-import { analyzeSceneWithMock } from "@/lib/mockVision";
+import { CandidateItem, GeoLocationCoordinates } from "@/types";
+import { getBrowserLocation, DEFAULT_DEMO_COORDINATES } from "@/lib/geo";
 
 interface CaptureModalProps {
   isOpen: boolean;
@@ -22,7 +25,8 @@ interface CaptureModalProps {
   onConfirmCandidates: (
     candidates: CandidateItem[],
     imagePreview?: string,
-    source?: "browser_upload" | "browser_camera"
+    source?: "browser_upload" | "browser_camera",
+    coordinates?: GeoLocationCoordinates
   ) => void;
 }
 
@@ -36,6 +40,22 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>("");
   const [fileError, setFileError] = useState<string | null>(null);
+
+  // Geolocation state
+  const [currentCoords, setCurrentCoords] = useState<GeoLocationCoordinates>(DEFAULT_DEMO_COORDINATES);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isVoiceShortcutActive, setIsVoiceShortcutActive] = useState<boolean>(false);
+
+  // Fetch coordinates on modal open
+  useEffect(() => {
+    if (isOpen) {
+      setIsLocating(true);
+      getBrowserLocation().then(({ coordinates }) => {
+        setCurrentCoords(coordinates);
+        setIsLocating(false);
+      });
+    }
+  }, [isOpen]);
 
   // Camera state
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -153,7 +173,10 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // Trigger Mock Analysis
+  // Analysis state & model source
+  const [modelSource, setModelSource] = useState<string>("Demo Mock Engine");
+
+  // Trigger Analysis via Server Adapter
   const handleAnalyze = async () => {
     if (!selectedImage) {
       setFileError("Please select or capture a photo first.");
@@ -161,15 +184,34 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     }
 
     setIsAnalyzing(true);
+    setFileError(null);
     try {
-      const results = await analyzeSceneWithMock({
-        imageName: imageFileName,
-        requestedQuery: requestedQuery,
-        source: activeTab === "camera" ? "browser_camera" : "browser_upload",
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: selectedImage,
+          requestedQuery: requestedQuery,
+          source: activeTab === "camera" ? "browser_camera" : "browser_upload",
+        }),
       });
-      setCandidates(results);
-    } catch {
-      setFileError("Scene analysis encountered an error. Please try again.");
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Analysis failed");
+      }
+
+      setCandidates(data.candidates);
+      setModelSource(
+        data.source === "live_meta_api"
+          ? `Meta AI (${data.metaModel})`
+          : data.source === "cache"
+          ? "SHA-256 Request Cache"
+          : "Demo Mock Engine (Zero External Calls)"
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Scene analysis encountered an error.";
+      setFileError(msg);
     } finally {
       setIsAnalyzing(false);
     }
@@ -223,7 +265,8 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     onConfirmCandidates(
       selected,
       selectedImage || undefined,
-      activeTab === "camera" ? "browser_camera" : "browser_upload"
+      activeTab === "camera" ? "browser_camera" : "browser_upload",
+      currentCoords
     );
     handleClose();
   };
@@ -258,6 +301,55 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
 
         {/* Modal Content */}
         <div className="p-5 space-y-5 overflow-y-auto">
+          {/* Glasses Voice Shortcut Simulation Banner */}
+          <div className="p-3.5 rounded-xl bg-forest-50/80 border border-forest-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-forest-700 text-ivory-50 flex items-center justify-center shrink-0">
+                <Mic className="w-4 h-4 text-sage-200" />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-forest-900 block">
+                  Meta Glasses Voice Shortcut Simulation
+                </span>
+                <span className="text-[11px] text-stone-600">
+                  Trigger: &ldquo;Hey Meta, map my belongings&rdquo;
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsVoiceShortcutActive(true);
+                // Simulate POV camera snapshot from glasses
+                setSelectedImage("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23ECE8DD'/><text x='50%25' y='45%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%231E3A2B'>Meta Glasses POV Snapshot</text><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%236B7C67'>Oak Coffee Table · Keys &amp; Leather Wallet</text></svg>");
+                setImageFileName("Glasses POV Frame (Mapped at current GPS)");
+                setRequestedQuery("keys and wallet");
+                setTimeout(() => setIsVoiceShortcutActive(false), 800);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-forest-300 hover:bg-forest-100 text-xs font-semibold text-forest-900 transition-colors shadow-xs"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-forest-700" />
+              <span>{isVoiceShortcutActive ? "Snapping POV..." : "Simulate 'Hey Meta'"}</span>
+            </button>
+          </div>
+
+          {/* Location Coordinates Stamping Badge */}
+          <div className="flex items-center justify-between px-3 py-2 bg-ivory-100 rounded-lg border border-ivory-200 text-xs text-charcoal-700">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-3.5 h-3.5 text-forest-700 shrink-0" />
+              <span>
+                <strong>GPS Radius Origin: </strong>
+                {isLocating
+                  ? "Acquiring GPS coordinates..."
+                  : `${currentCoords.latitude}° N, ${Math.abs(currentCoords.longitude)}° W`}
+              </span>
+            </div>
+            <span className="text-[11px] text-stone-500 font-medium">
+              Radius: ~50m geofence
+            </span>
+          </div>
+
           {/* Step 1: Capture or Upload (when no candidate review yet) */}
           {!candidates ? (
             <div className="space-y-4">
@@ -448,9 +540,14 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-ivory-200">
                 <div>
-                  <h3 className="text-sm font-semibold text-forest-900">
-                    Review AI Suggestions ({candidates.filter((c) => c.is_selected).length} selected)
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-forest-900">
+                      Review AI Suggestions ({candidates.filter((c) => c.is_selected).length} selected)
+                    </h3>
+                    <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-ivory-100 text-forest-800 border border-ivory-300">
+                      {modelSource}
+                    </span>
+                  </div>
                   <p className="text-[11px] text-stone-500">
                     Verify location and landmarks before tracking. Suggestions do not become memories until confirmed.
                   </p>

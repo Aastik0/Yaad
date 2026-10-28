@@ -92,6 +92,11 @@ export const RecentMemoriesFeed: React.FC<RecentMemoriesFeedProps> = ({
                 <p className="text-[11px] text-stone-500">
                   Recorded at {new Date(obs.observed_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Landmarks:{" "}
                   <span className="text-charcoal-700">{obs.landmarks.join(", ")}</span>
+                  {obs.coordinates && (
+                    <span className="ml-2 font-mono text-[10px] text-forest-700 bg-forest-50 px-1.5 py-0.2 rounded border border-forest-100">
+                      📍 {obs.coordinates.latitude}° N, {Math.abs(obs.coordinates.longitude)}° W
+                    </span>
+                  )}
                 </p>
               </div>
 

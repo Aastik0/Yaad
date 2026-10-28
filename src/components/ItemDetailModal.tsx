@@ -244,6 +244,28 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               <Clock className="w-3 h-3" />
               <span>Recorded at {new Date(item.last_observed_at).toLocaleString()}</span>
             </div>
+
+            {/* GPS Location & Radius Tag */}
+            {item.coordinates && (
+              <div className="mt-2 pt-2 border-t border-ivory-200 text-xs text-charcoal-800 space-y-1">
+                <span className="text-[10px] uppercase font-semibold text-stone-500 block">
+                  GPS Geofence Origin
+                </span>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-mono text-forest-800 bg-forest-50 px-2 py-0.5 rounded border border-forest-100 font-medium">
+                    {item.coordinates.latitude}° N, {Math.abs(item.coordinates.longitude)}° W
+                  </span>
+                  <span className="text-stone-500">
+                    Radius: {item.geofence_radius_meters || 50}m
+                  </span>
+                </div>
+                {item.coordinates.place_name && (
+                  <p className="text-[11px] text-stone-500">
+                    Location: {item.coordinates.place_name}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Observation History list */}

@@ -25,7 +25,7 @@ import {
   setStoredPeople,
   resetToFixtures,
 } from "@/lib/storage";
-import { TrackedItem, ItemObservation, PersonMemory, CandidateItem } from "@/types";
+import { TrackedItem, ItemObservation, PersonMemory, CandidateItem, GeoLocationCoordinates } from "@/types";
 import { ShieldCheck, Info, RotateCcw } from "lucide-react";
 
 export default function Home() {
@@ -200,7 +200,8 @@ export default function Home() {
   const handleConfirmCandidates = (
     candidates: CandidateItem[],
     imagePreview?: string,
-    source?: "browser_upload" | "browser_camera"
+    source?: "browser_upload" | "browser_camera",
+    coordinates?: GeoLocationCoordinates
   ) => {
     const now = new Date().toISOString();
     const effectiveSource = source || "browser_upload";
@@ -217,6 +218,7 @@ export default function Home() {
       observed_at: now,
       source: effectiveSource,
       image_reference: imagePreview,
+      coordinates: coordinates,
       user_confirmed: true,
       created_at: now,
     }));
@@ -231,6 +233,8 @@ export default function Home() {
       last_landmarks: c.landmarks,
       last_observed_at: now,
       image_reference: imagePreview,
+      coordinates: coordinates,
+      geofence_radius_meters: 50,
       updated_at: now,
     }));
 

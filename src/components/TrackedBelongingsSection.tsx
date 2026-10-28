@@ -131,11 +131,23 @@ export const TrackedBelongingsSection: React.FC<TrackedBelongingsSectionProps> =
                 {/* Grounded Location Description */}
                 <div className="mt-3 flex items-start gap-2 text-xs text-charcoal-800 leading-relaxed bg-ivory-50 p-2.5 rounded-lg border border-ivory-200">
                   <MapPin className="w-3.5 h-3.5 text-forest-600 shrink-0 mt-0.5" />
-                  <div>
+                  <div className="flex-1">
                     <span className="font-medium text-stone-500 block text-[10px] uppercase">
                       Last recorded observation
                     </span>
                     <span>{item.last_location_description}</span>
+
+                    {/* GPS Coordinates Stamping */}
+                    {item.coordinates && (
+                      <div className="mt-1.5 pt-1.5 border-t border-ivory-200/80 flex items-center justify-between text-[11px] text-stone-600 flex-wrap gap-1">
+                        <span className="font-mono text-[10px] text-forest-800 font-semibold bg-forest-50 px-1.5 py-0.5 rounded border border-forest-100">
+                          GPS: {item.coordinates.latitude}° N, {Math.abs(item.coordinates.longitude)}° W
+                        </span>
+                        <span className="text-[10px] text-stone-400">
+                          Radius: {item.geofence_radius_meters || 50}m
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

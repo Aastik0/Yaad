@@ -12,6 +12,9 @@ import {
   MapPin,
   Clock,
   Sparkles,
+  Heart,
+  Radio,
+  Sliders,
 } from "lucide-react";
 import { speakCalmReminder, stopSpeech } from "@/lib/speech";
 
@@ -34,6 +37,11 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
 }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
+  // Radius & GPS distance simulation state
+  const [geofenceRadiusMeters, setGeofenceRadiusMeters] = useState<number>(50);
+  const [simulatedDistanceMeters, setSimulatedDistanceMeters] = useState<number>(75);
+  const isOutsideRadius = simulatedDistanceMeters > geofenceRadiusMeters;
+
   // Stop speech when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -44,8 +52,15 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
 
   if (!isOpen) return null;
 
+  // Primary mapped location from items
+  const primaryCoords = unconfirmedItems[0]?.coordinates || {
+    latitude: 37.7749,
+    longitude: -122.4194,
+    place_name: "Mapped Origin",
+  };
+
   // Generate calm spoken sentence
-  const generateSpokenSummary = () => {
+  const generateSpokenSummary = (distance = simulatedDistanceMeters) => {
     if (unconfirmedItems.length === 0) {
       return "All tracked belongings have been confirmed as collected. You are good to go.";
     }
@@ -54,9 +69,11 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
       .map((item) => `${item.item_name}, last recorded ${item.last_location_description}`)
       .join(". Also, ");
 
-    return `Before you step away, you have ${unconfirmedItems.length} unconfirmed belonging${
+    return `Meta notice: You have stepped ${distance} meters away from your mapped belongings. You have ${
+      unconfirmedItems.length
+    } unconfirmed item${
       unconfirmedItems.length > 1 ? "s" : ""
-    }: ${itemsSummary}. Did you remember to collect them?`;
+    }: ${itemsSummary}. Did you remember to pick them up?`;
   };
 
   const handleToggleVoice = () => {
@@ -72,6 +89,15 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
     }
   };
 
+  // Auto-trigger speech when user slides past the geofence radius boundary
+  const handleDistanceSliderChange = (newDistance: number) => {
+    setSimulatedDistanceMeters(newDistance);
+    if (newDistance > geofenceRadiusMeters && !isOutsideRadius && unconfirmedItems.length > 0) {
+      speakCalmReminder(generateSpokenSummary(newDistance));
+      setIsSpeaking(true);
+    }
+  };
+
   const handleClose = () => {
     stopSpeech();
     setIsSpeaking(false);
@@ -80,7 +106,7 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-charcoal-900/40 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-xl w-full border border-ivory-300 shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl max-w-xl w-full border border-ivory-300 shadow-xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="px-5 py-4 bg-ivory-50 border-b border-ivory-300 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -90,14 +116,14 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm sm:text-base font-semibold text-forest-900">
-                  Departure Check Simulator
+                  Location Radius &amp; Departure Simulator
                 </h2>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-terracotta-100 text-terracotta-800">
-                  Simulation
+                  GPS Geofence
                 </span>
               </div>
               <p className="text-[11px] text-stone-500">
-                Checking tracked items before you move to your next location
+                Simulating Meta Glasses departure alerts when stepping outside mapped radius
               </p>
             </div>
           </div>
@@ -111,25 +137,81 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
 
         {/* Modal Body */}
         <div className="p-5 space-y-4 overflow-y-auto">
-          {/* Honest Simulation Disclaimer */}
-          <div className="p-3 rounded-xl bg-ivory-100 border border-ivory-300 text-xs text-charcoal-800 leading-relaxed flex items-start gap-2.5">
-            <ShieldAlert className="w-4 h-4 text-forest-700 shrink-0 mt-0.5" />
-            <span>
-              <strong>Simulated in browser:</strong> Real background geofencing and smart-glasses departure triggers require native hardware integration. In this MVP, departure is triggered on-demand.
-            </span>
+          {/* Dementia & Cognitive Independence Mission Card */}
+          <div className="p-3.5 rounded-xl bg-forest-50/70 border border-forest-200 text-xs text-charcoal-800 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-forest-900 font-semibold">
+              <Heart className="w-4 h-4 text-forest-700" />
+              <span>Dementia Care &amp; Memory Independence Vision</span>
+            </div>
+            <p className="text-[11px] text-charcoal-700 leading-relaxed">
+              For people with dementia, mild cognitive impairment, or memory loss, leaving essential items creates severe disorientation. By mapping belongings to GPS coordinates and announcing departures, Yaad gives users independence and security.
+            </p>
+          </div>
+
+          {/* Interactive GPS Radius Simulator Slider */}
+          <div className="p-4 rounded-xl bg-ivory-50 border border-ivory-300 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5 font-semibold text-forest-900">
+                <Radio className="w-3.5 h-3.5 text-forest-700 animate-pulse" />
+                <span>Simulate Walking Away from Table</span>
+              </div>
+              <span
+                className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                  isOutsideRadius
+                    ? "bg-terracotta-100 text-terracotta-800 border border-terracotta-200"
+                    : "bg-forest-100 text-forest-800"
+                }`}
+              >
+                {isOutsideRadius ? "Outside Radius (Alarm Active)" : "Within Safe Radius"}
+              </span>
+            </div>
+
+            {/* Slider */}
+            <div>
+              <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                <span>0m (At Table)</span>
+                <span className="font-semibold text-forest-900">
+                  Current Distance: {simulatedDistanceMeters}m
+                </span>
+                <span>150m (Down Street)</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="150"
+                step="5"
+                value={simulatedDistanceMeters}
+                onChange={(e) => handleDistanceSliderChange(parseInt(e.target.value))}
+                className="w-full accent-forest-700 cursor-pointer"
+              />
+              <div className="flex items-center justify-between text-[10px] text-stone-400 mt-0.5">
+                <span>Safe Zone (&lt;{geofenceRadiusMeters}m)</span>
+                <span>Geofence Boundary: {geofenceRadiusMeters}m</span>
+                <span>Departure Trigger Zone</span>
+              </div>
+            </div>
+
+            {/* Coordinates Display */}
+            <div className="pt-2 border-t border-ivory-200 flex items-center justify-between text-[11px] text-stone-500">
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-forest-700" />
+                Origin: {primaryCoords.latitude}° N, {Math.abs(primaryCoords.longitude)}° W
+              </span>
+              <span>Radius: {geofenceRadiusMeters}m</span>
+            </div>
           </div>
 
           {/* Voice Reminder Audio Pill */}
           {unconfirmedItems.length > 0 && (
-            <div className="p-3 rounded-xl bg-forest-50/70 border border-forest-100 flex items-center justify-between gap-3">
+            <div className="p-3 rounded-xl bg-white border border-forest-100 shadow-xs flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-forest-700" />
                 <div>
                   <span className="text-xs font-semibold text-forest-900 block">
-                    Calm Voice Reminder (Web Speech)
+                    Meta Glasses Audio Announcement
                   </span>
                   <span className="text-[11px] text-stone-500">
-                    Spoken audio feedback with text fallback
+                    Directional open-ear spoken reminder
                   </span>
                 </div>
               </div>
@@ -151,7 +233,7 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
                 ) : (
                   <>
                     <Volume2 className="w-3.5 h-3.5" />
-                    <span>Play Reminder</span>
+                    <span>Play Announcement</span>
                   </>
                 )}
               </button>
@@ -174,7 +256,7 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-stone-500 font-medium px-1">
-                <span>{unconfirmedItems.length} item(s) unconfirmed</span>
+                <span>{unconfirmedItems.length} item(s) unconfirmed in this radius</span>
                 <span className="text-[11px] text-stone-400">
                   Select an action for each
                 </span>
@@ -183,7 +265,11 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
               {unconfirmedItems.map((item) => (
                 <div
                   key={item.id}
-                  className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 space-y-3"
+                  className={`p-4 rounded-xl border space-y-3 transition-colors ${
+                    isOutsideRadius
+                      ? "border-terracotta-300 bg-terracotta-50/40"
+                      : "border-amber-200 bg-amber-50/40"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -195,8 +281,14 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
                       </h4>
                     </div>
 
-                    <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                      Unconfirmed
+                    <span
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                        isOutsideRadius
+                          ? "bg-terracotta-100 text-terracotta-800 border-terracotta-200"
+                          : "bg-amber-100 text-amber-800 border-amber-200"
+                      }`}
+                    >
+                      {isOutsideRadius ? "Outside Radius!" : "Unconfirmed"}
                     </span>
                   </div>
 
