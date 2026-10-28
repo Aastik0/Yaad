@@ -76,3 +76,12 @@ test("Phase 5: AnalyzeRequestSchema validates request input and provides safe de
   }
 });
 
+test("Phase 6: Usage ledger returns valid spend metrics and budget reserve", async () => {
+  const { getUsageLedger } = await import("../src/lib/meta.ts");
+  const summary = getUsageLedger();
+  assert.ok(typeof summary.budgetRemainingUsd === "number");
+  assert.ok(typeof summary.totalCostUsd === "number");
+  assert.ok(typeof summary.cacheHits === "number");
+  assert.ok(Array.isArray(summary.ledger));
+});
+

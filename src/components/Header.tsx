@@ -5,12 +5,14 @@ interface HeaderProps {
   activeTab: "belongings" | "people";
   onTabChange: (tab: "belongings" | "people") => void;
   unconfirmedCount: number;
+  onOpenDevDrawer?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onTabChange,
   unconfirmedCount,
+  onOpenDevDrawer,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-ivory-100/90 backdrop-blur-md border-b border-ivory-300">
@@ -77,18 +79,20 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </nav>
 
-          {/* Demo Mode Badge */}
+          {/* Demo Mode & Cost Protection Badge */}
           <div className="flex items-center">
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-ivory-50 border border-ivory-300 text-xs text-charcoal-700 shadow-xs"
-              title="Demo Mode: Running with realistic local fixtures. Zero billable external calls."
+            <button
+              type="button"
+              onClick={onOpenDevDrawer}
+              className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-ivory-50 hover:bg-ivory-200 border border-ivory-300 text-xs text-charcoal-700 shadow-xs transition-colors cursor-pointer"
+              title="Click to view Developer Controls, API Usage Ledger & Credit Protection"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-forest-600 shrink-0" />
               <span className="font-medium text-forest-800 hidden xs:inline">Demo Mode</span>
-              <span className="text-[11px] text-charcoal-700 hidden lg:inline">
+              <span className="text-[11px] text-stone-500 hidden lg:inline">
                 · Zero External Calls
               </span>
-            </div>
+            </button>
           </div>
         </div>
       </div>

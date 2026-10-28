@@ -1,313 +1,136 @@
-Yaad 🧠
+# Yaad 🧠 — AI Memory Companion
+> **Wearable-First AI Memory Assistant for Belongings & People**  
+> *Designed for Meta Smart Glasses | Built for the Meta AI Developer Hackathon*  
+> *“No one deserves to forget. Everyone deserves to remember.”*
 
-No one deserves to forget. Everyone deserves to remember.
+---
 
-Yaad is a wearable-first, AI-powered memory assistant designed primarily for Meta smart glasses.
+## 🌟 1. Executive Summary & Core Mission
 
-We forget where we put our keys. We leave our water bottles in classrooms. We meet people whose names we struggle to recall. We forget the little details that make everyday life meaningful.
+Every day, millions of people experience the stress of leaving essential belongings behind: keys on a coffee table, a wallet on a café bistro table, prescription reading glasses by a doorway, or a water bottle in a classroom.
 
-What if you didn’t have to rely entirely on your memory?
+For individuals living with **dementia, mild cognitive impairment (MCI), early Alzheimer's, or ADHD**, this is not just an inconvenience—it causes severe disorientation, distress, and a loss of personal autonomy.
 
-Yaad aims to transform smart glasses into a personal memory companion that helps you remember your belongings, recall people, and retrieve meaningful details from your everyday experiences.
+**Yaad** turns smart glasses into a gentle, proactive memory companion:
+1. **Scene Grounding:** With a quick POV snapshot or voice command (*"Hey Meta, map my belongings"*), Yaad identifies what you set down and grounds it against real visual landmarks and exact GPS coordinates.
+2. **Proactive Radius Geofence:** When you step away beyond a safe radius (e.g., 50 meters), Yaad checks for unconfirmed items and announces a calm reminder through the glasses' directional open-ear speakers.
+3. **Grounded Recall:** Ask *"Where did I last leave my keys?"* and receive a truthful historical observation with timestamps and landmarks.
+4. **People Memory (Secondary · Opt-in):** Privately record and recall notes about people you meet (names, where you met, conversation notes) with strict privacy and zero facial recognition.
 
-See it. Remember it. Never leave it behind.
+---
 
-⸻
+## 🚀 2. Live Demo & Key Capabilities
 
-💡 The Problem
+The project is running live locally at **[http://localhost:3001](http://localhost:3001)** (or `3000`).
 
-Everyday forgetfulness is frustrating.
+| Feature | Implementation | Integrity Status |
+| :--- | :--- | :--- |
+| **Scene Capture** | Browser camera (`getUserMedia`) + File upload + POV simulator | **Active (Web MVP)** |
+| **AI Scene Grounding** | Meta Model API (`llama-3.2-11b-vision-instruct`) with Zod schema validation & fallback to zero-cost mock engine | **Active & Guarded** |
+| **GPS Geolocation Stamping** | Real device GPS coordinates via `navigator.geolocation` stored with every observation | **Active (Real GPS)** |
+| **Radius & Departure Simulator** | Haversine distance engine with 0–150m walking slider and 50m geofence trigger | **Active Simulator** |
+| **Spoken Voice Reminders** | Web Speech API synthesis (`window.speechSynthesis`) with visual text fallback | **Active** |
+| **People Memory** | Manual note CRUD & search (no face recognition, no bystander profiling) | **Active (Opt-in)** |
+| **Credit & Spend Protection** | $75 budget ceiling, SHA-256 duplicate cache, emergency kill switch, usage ledger | **Active & Enforced** |
 
-* 🔑 Where did I leave my keys?
-* 🎧 Did I leave my earphones in the classroom?
-* 🧴 Where did I last see my water bottle?
-* 👤 What was that person’s name?
-* 💬 What did we talk about when we last met?
+> **Integrity Disclosure:**
+> In this Web MVP, hardware capture and background geofencing are simulated within the browser. The data models and server-side endpoints are designed so physical Meta smart glasses hardware can be connected directly without rewriting core memory logic.
 
-Traditional reminder applications require users to anticipate what they might forget and manually create reminders.
+---
 
-But people don’t always realize they’re about to forget something.
+## 🛠️ 3. Quickstart & Installation
 
-The opportunity is to move beyond manually maintained lists and build a memory system that can capture relevant context, retrieve it when needed, and proactively help users avoid common mistakes.
+### Prerequisites
+* Node.js v18.17+ (v24.7.0 tested)
+* npm v10+
 
-⸻
+### Setup & Run
 
-🚀 Our Vision
+```bash
+# 1. Clone repository and navigate into project
+cd Yaad
 
-Yaad aims to make memory assistance a natural part of everyday life through smart glasses.
+# 2. Install dependencies
+npm install
 
-Rather than requiring users to constantly open an application or type information into their phones, Yaad is designed around a wearable-first experience.
+# 3. Run development server
+npm run dev
+```
 
-Through supported smart-glasses capabilities, contextual information, and AI-powered retrieval, Yaad aims to help users:
+Open [**http://localhost:3001**](http://localhost:3001) in your browser.
 
-* Remember where their belongings were last seen.
-* Receive timely reminders about potentially forgotten items.
-* Recall names and relevant details about people.
-* Retrieve contextual information using natural-language queries.
-* Build a searchable record of useful everyday memories.
+---
 
-Our primary hardware target is Meta smart glasses, with the actual integration determined by available APIs, device permissions, and supported capabilities.
+## 🧪 4. Automated Testing & Verification
 
-⸻
+Yaad includes automated unit tests running with Node's native test runner (`node:test`):
 
-✨ Core Features
+```bash
+# Run unit test suite (10/10 tests)
+npm test
 
-1. 📍 Belongings Memory — Our Primary USP
+# Run TypeScript typechecker
+npx tsc --noEmit
 
-Helping people remember their belongings and avoid leaving them behind.
+# Run ESLint
+npm run lint
 
-Yaad aims to build contextual memories around everyday objects.
+# Run optimized production build
+npm run build
+```
 
-Planned capabilities include:
+---
 
-* Visual memory: Capture relevant visual information through supported smart-glasses integrations.
-* Last-seen history: Associate belongings with recorded locations and timestamps.
-* Contextual retrieval: Retrieve relevant memories when users ask where an item was last seen.
-* Proactive reminders: Explore ways to alert users when they may have left a previously observed item behind.
-* Natural-language queries: Let users ask questions instead of searching through lists.
+## ⚙️ 5. Environment Configuration & Cost Controls
 
-Example interaction
+Copy `.env.example` to `.env.local` to configure:
 
-User: “Where did I leave my bottle?”
+```bash
+cp .env.example .env.local
+```
 
-Yaad: “Your bottle was last recorded in your classroom at 2:15 PM.”
+| Environment Variable | Default | Purpose |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_APP_MODE` | `demo` | Runs local mock provider with **zero billable calls** |
+| `META_API_KEY` | *(empty)* | Server-only API key for Meta Model API |
+| `META_MODEL_ID` | `llama-3.2-11b-vision-instruct` | Verified vision-capable Meta model |
+| `META_MONTHLY_BUDGET_CAP_USD` | `75` | Hard limit protection (preserving $75 reserve from $150 allocation) |
+| `META_REQUESTS_KILL_SWITCH` | `false` | Emergency kill switch to halt all live model calls immediately |
 
-Illustrative example. Actual answers depend on captured data and the implemented memory system.
+---
 
-The goal is not merely to help users find lost belongings. It is to help them avoid leaving those belongings behind in the first place.
-
-2. 👥 People Memory
-
-People are an important part of our everyday memories.
-
-Yaad aims to help users recall relevant information about the people they meet.
-
-Planned capabilities include:
-
-* Remembering names and user-provided details.
-* Associating people with recorded interactions and contexts.
-* Retrieving relevant notes from previous encounters.
-* Helping users recall information before a subsequent interaction.
-
-Example interaction
-
-User: “Where did I meet Rahul?”
-
-Yaad: “Your saved memory indicates that you met Rahul at the college hackathon.”
-
-Illustrative example. This capability requires the relevant information to have been captured or recorded.
-
-People Memory extends the same underlying memory system without replacing our primary focus on belongings.
-
-3. 🧠 AI-Powered Memory Retrieval
-
-Memory is most useful when you can retrieve the right information at the right time.
-
-Yaad aims to support natural-language queries over stored memories.
-
-Examples:
-
-* “Where did I last see my wallet?”
-* “When did I last use my headphones?”
-* “What do I know about Rahul?”
-* “What did I discuss with him last time?”
-
-The memory engine will retrieve relevant records and use their associated context to construct useful answers.
-
-4. 🔔 Contextual Reminders
-
-Yaad aims to go beyond traditional time-based reminders.
-
-Potential capabilities include:
-
-* Detecting when a user leaves a previously recorded location.
-* Checking whether belongings associated with that location may have been left behind.
-* Delivering alerts through supported devices and integrations.
-* Reducing unnecessary alerts by considering the available evidence.
-
-Location signals alone cannot establish whether an object has been collected. Reliable reminders will require additional information or carefully designed confirmation logic.
-
-⸻
-
-🕶️ Why Smart Glasses?
-
-Smart glasses offer a potentially useful interface for memory assistance because they can support hands-free interactions and, depending on the device and integration, capture visual context.
-
-Yaad is designed around three principles:
-
-1. Capture in context
-
-Relevant information should be captured as naturally as possible, using supported device capabilities and appropriate user permissions.
-
-2. Retrieve without friction
-
-Users should be able to access relevant memories through hands-free interactions wherever the hardware and integration permit.
-
-3. Assist before it’s too late
-
-Yaad should aim to help users remember important belongings before they leave them behind, rather than relying exclusively on searches after something goes missing.
-
-Meta smart glasses are our primary target platform. Other devices may be considered in the future, but the core experience will be designed around wearable-first memory assistance.
-
-⸻
-
-⚙️ How It Works
-
-The intended system follows five stages.
-
-1. Capture
-
-Relevant visual or contextual information is captured through supported smart-glasses capabilities and authorized integrations.
-
-2. Understand
-
-AI processes the available information to identify potentially useful details, such as belongings, people, and contextual cues.
-
-3. Store
-
-The system saves appropriate memory records with relevant metadata, such as timestamps and available location information.
-
-4. Retrieve
-
-Users ask questions and receive answers based on their stored memories.
-
-5. Assist
-
-Yaad can use available context to generate reminders when there is sufficient evidence that an item may have been left behind.
-
-Conceptual workflow:
-
-Smart Glasses → Context Capture → AI Processing → Memory Storage → Retrieval & Reminders
-
-This describes the intended architecture, not a claim that every component has already been implemented.
-
-⸻
-
-🏗️ Technology Stack
-
-The final technology stack will be documented as implementation decisions are finalized.
-
-The planned architecture may include:
-
-Component	Purpose
-Meta smart glasses	Primary target for wearable interaction and supported context capture
-AI / computer vision	Interpret available visual information
-Language model	Understand natural-language queries and formulate responses
-Memory database	Store and retrieve contextual memory records
-Backend services	Coordinate memory processing, retrieval, and integrations
-Smartphone integration	Support configuration, notifications, and available device capabilities
-
-Specific frameworks, APIs, and infrastructure will be added here once selected and implemented.
-
-⸻
-
-🔐 Privacy & Responsible Memory
-
-A personal memory system must be built with privacy as a fundamental consideration.
-
-Yaad aims to follow these principles:
-
-* Capture information only through authorized and supported mechanisms.
-* Provide appropriate controls over memory creation and retention.
-* Protect stored memories using suitable security measures.
-* Allow users to review and delete their stored memories.
-* Handle information about other people responsibly.
-* Avoid unnecessary collection of sensitive information.
-* Respect applicable consent requirements and device permissions.
-
-Any implementation involving visual capture or information about other people must account for privacy, consent, and the capabilities of the target platform.
-
-⸻
-
-🗺️ Roadmap
-
-Phase 1 — Foundation
-
-* Define the system architecture.
-* Validate Meta smart-glasses integration options.
-* Design the memory data model.
-* Establish the initial development environment.
-
-Phase 2 — Belongings Memory
-
-* Implement memory creation and storage.
-* Develop a workflow for recording belongings and their context.
-* Associate memories with timestamps and available location data.
-* Implement last-seen memory retrieval.
-
-Phase 3 — AI Memory Retrieval
-
-* Implement natural-language queries.
-* Retrieve relevant memories using contextual information.
-* Improve retrieval accuracy and response reliability.
-
-Phase 4 — Proactive Assistance
-
-* Investigate supported location and notification integrations.
-* Develop logic for potentially forgotten belongings.
-* Implement and test contextual reminders.
-
-Phase 5 — People Memory
-
-* Implement people-related memory records.
-* Associate people with relevant user-provided context.
-* Enable retrieval of previously stored interaction details.
-
-Phase 6 — Testing & Deployment
-
-* Test memory accuracy and reliability.
-* Evaluate the end-to-end user experience.
-* Implement appropriate privacy and security controls.
-* Deploy a working prototype.
-
-Roadmap items will be marked complete as the corresponding capabilities are implemented and tested.
-
-⸻
-
-🚧 Project Status
-
-Status: In Development 🚀
-
-Yaad is being developed as a hackathon project exploring wearable-first, AI-powered memory assistance.
-
-Our initial priority is to establish the feasibility of the smart-glasses integration and build a reliable belongings-memory workflow before expanding into more advanced features.
-
-⸻
-
-🤝 Contributing
-
-Suggestions, feedback, and contributions are welcome.
-
-If you’d like to contribute:
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Implement your changes.
-4. Test your implementation.
-5. Submit a pull request describing your contribution.
-
-For significant changes, consider opening an issue first to discuss the proposed implementation.
-
-⸻
-
-🌟 The Bigger Picture
-
-Technology has transformed how we communicate, work, and organize our lives.
-
-Yet we still forget the small things: where we left our belongings, whom we met, and what made an interaction memorable.
-
-Yaad aims to make these everyday memories easier to preserve and retrieve through wearable technology and AI.
-
-We believe technology should not only help us do more. It should also help us remember what matters.
-
-Yaad
-
-Your memory, beyond your mind.
-
-No one deserves to forget. Everyone deserves to remember.
-
-⸻
-
-📄 License
-
-A license will be added once the project’s distribution and reuse terms have been decided.
+## 🎬 6. Hackathon Demo Walkthrough (2 Minutes)
+
+1. **The Problem & Assistive Mission:**
+   * Explain how everyday forgetfulness impacts independence, especially for those with cognitive impairment or dementia.
+2. **Map Belongings ("Hey Meta, map my belongings"):**
+   * Click **"Remember belongings"**.
+   * Click the top button: **"Simulate 'Hey Meta'"** or snap a photo.
+   * Observe the captured GPS location: `📍 GPS Radius Origin: 37.7749° N, 122.4194° W`.
+   * Review the AI suggestions: keys on the coffee table, wallet on the cafe bistro table. Confirm both.
+3. **Dashboard State:**
+   * Notice both items appear with green GPS coordinates, timestamps, and `"Tracked · Unconfirmed"` status chips.
+4. **Simulate Walking Away (Radius Geofence):**
+   * Click **"Demo: Simulate leaving"**.
+   * Drag the distance slider from **0m** past the **50m radius** to **75m**.
+   * Listen to the calm spoken voice announcement through your speakers:
+     > *"Meta notice: You have stepped 75 meters away from your mapped belongings... Did you remember to pick them up?"*
+5. **Resolution & Recall:**
+   * Mark the keys collected, leaving the wallet unconfirmed.
+   * Type in the search bar: *"Where did I last leave my wallet?"*.
+   * View the grounded recall card with exact timestamp, cafe table description, and GPS coordinates.
+6. **Developer Controls:**
+   * Click the **"Demo Mode · Zero External Calls"** badge in the top right to open the Developer Drawer, showing the real-time spend ledger, SHA-256 cache hits, and budget reserve.
+
+---
+
+## 🔒 7. Privacy, Safety & Dignity
+
+* **No Facial Recognition:** People Memory is strictly manual notes entered by the user. Yaad never profiles bystanders or identifies strangers from images.
+* **Grounded Memory:** Observations are stamped as *"last recorded at [time]"*, never asserting absolute certainty that an item is still there.
+* **Data Deletion:** Every memory, image reference, and person note can be deleted instantly by the user.
+
+---
+
+## 📄 License
+MIT License. Built for the Meta AI Developer Hackathon.

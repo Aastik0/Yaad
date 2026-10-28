@@ -10,6 +10,7 @@ import { PeopleMemorySection } from "@/components/PeopleMemorySection";
 import { CaptureModal } from "@/components/CaptureModal";
 import { RecallAnswerCard } from "@/components/RecallAnswerCard";
 import { ItemDetailModal } from "@/components/ItemDetailModal";
+import { DeveloperDrawer } from "@/components/DeveloperDrawer";
 import {
   INITIAL_TRACKED_ITEMS,
   INITIAL_OBSERVATIONS,
@@ -33,6 +34,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
   const [isDepartureModalOpen, setIsDepartureModalOpen] = useState(false);
+  const [isDevDrawerOpen, setIsDevDrawerOpen] = useState(false);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<TrackedItem | null>(null);
   const [dismissedRecallQuery, setDismissedRecallQuery] = useState<string | null>(null);
 
@@ -249,6 +251,7 @@ export default function Home() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         unconfirmedCount={unconfirmedItems.length}
+        onOpenDevDrawer={() => setIsDevDrawerOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -329,6 +332,11 @@ export default function Home() {
         onClose={() => setSelectedItemForDetail(null)}
         onUpdateItem={handleUpdateItem}
         onDeleteItem={handleDeleteItem}
+      />
+
+      <DeveloperDrawer
+        isOpen={isDevDrawerOpen}
+        onClose={() => setIsDevDrawerOpen(false)}
       />
 
       {/* Accessible Footer with Demo Controls */}

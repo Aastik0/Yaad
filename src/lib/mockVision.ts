@@ -1,4 +1,4 @@
-import { CandidateItem } from "@/types";
+import type { CandidateItem } from "../types/index.ts";
 
 /**
  * Realistic Mock Vision Provider for Yaad Demo Mode
