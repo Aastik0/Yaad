@@ -58,3 +58,4 @@ test("Phase 9 Simulator: Touchpad tap trigger executes with custom coordinates",
   assert.equal(event.trigger, "touchpad_tap");
   assert.equal(event.coordinates.place_name, "New York Hacker Hub");
 });
+

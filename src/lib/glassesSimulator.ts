@@ -94,3 +94,4 @@ export function buildGlassesAnalyzePayload(
     forceLive: false, // strictly zero credit spend during simulator operations
   };
 }
+

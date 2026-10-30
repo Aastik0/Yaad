@@ -50,3 +50,4 @@ To maintain engineering integrity, the virtual simulator is implemented as a **t
 ## 4. Integrity Disclosures for Judges
 * **No Physical Glasses Claimed:** Hardware integration is not claimed as physical glasses; all smart-glasses capabilities are explicitly labelled as a software simulation adhering to official Meta Ray-Ban design specs.
 * **No Background Web Geofencing Claimed:** The browser environment sandbox cannot run persistent background location services; the 50m radius departure engine is an interactive simulation.
+
