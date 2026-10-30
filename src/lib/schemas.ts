@@ -28,9 +28,11 @@ export const AnalyzeRequestSchema = z.object({
   image: z.string().min(1, "Image data or URL required"),
   requestedQuery: z.string().optional().default(""),
   source: z.enum(["browser_upload", "browser_camera", "manual"]).default("browser_upload"),
+  userId: z.string().optional().default("demo-user"),
   forceLive: z.boolean().optional().default(false),
 });
 
 export type CandidateItemOutput = z.infer<typeof CandidateItemSchema>;
 export type SceneAnalysisResponse = z.infer<typeof SceneAnalysisResponseSchema>;
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
+export type AnalyzeRequestInput = z.input<typeof AnalyzeRequestSchema>;

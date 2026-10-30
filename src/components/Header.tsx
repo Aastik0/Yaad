@@ -1,11 +1,12 @@
 import React from "react";
-import { ShieldCheck, Compass, Sparkles, UserCheck } from "lucide-react";
+import { ShieldCheck, Compass, Sparkles, UserCheck, Glasses } from "lucide-react";
 
 interface HeaderProps {
   activeTab: "belongings" | "people";
   onTabChange: (tab: "belongings" | "people") => void;
   unconfirmedCount: number;
   onOpenDevDrawer?: () => void;
+  onOpenGlassesSimulator?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -13,6 +14,7 @@ export const Header: React.FC<HeaderProps> = ({
   onTabChange,
   unconfirmedCount,
   onOpenDevDrawer,
+  onOpenGlassesSimulator,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-ivory-100/90 backdrop-blur-md border-b border-ivory-300">
@@ -79,8 +81,20 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </nav>
 
-          {/* Demo Mode & Cost Protection Badge */}
-          <div className="flex items-center">
+          {/* Actions & Badges */}
+          <div className="flex items-center gap-2">
+            {onOpenGlassesSimulator && (
+              <button
+                type="button"
+                onClick={onOpenGlassesSimulator}
+                className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-forest-50 hover:bg-forest-100 border border-forest-200 text-xs text-forest-800 shadow-xs transition-colors cursor-pointer"
+                title="Launch Meta Ray-Ban Virtual Glasses Simulator (Phase 9)"
+              >
+                <Glasses className="w-3.5 h-3.5 text-forest-700 shrink-0" />
+                <span className="font-semibold hidden sm:inline">Glasses Simulator</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={onOpenDevDrawer}

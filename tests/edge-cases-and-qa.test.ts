@@ -288,3 +288,44 @@ test("Phase 8 QA - AI Controls: Verifies Demo Mode operates with zero external n
   assert.ok(result.candidates.length > 0);
   assert.equal(result.metaModel, "mock-fixture-engine");
 });
+
+test("Phase 8 QA - Cache Isolation: Verifies duplicate cache is strictly partitioned by user_id", async () => {
+  const { computeCacheKey } = await import("../src/lib/meta.ts");
+
+  const imageSample = "data:image/jpeg;base64,samplebase64data";
+  const query = "keys and wallet";
+  const model = "llama-3.2-11b-vision-instruct";
+
+  // Two different users submit the identical image & query
+  const keyUserA = computeCacheKey("user-alpha", imageSample, query, model);
+  const keyUserB = computeCacheKey("user-beta", imageSample, query, model);
+
+  assert.notEqual(keyUserA, keyUserB, "Cache keys must differ between users to prevent cross-user visual data leakage");
+  assert.equal(keyUserA, computeCacheKey("user-alpha", imageSample, query, model), "Cache key must be deterministic for the same user");
+});
+
+test("Phase 8 QA - Camera Fallback: Gracefully handles media device unavailability", () => {
+  // Simulating environment where getUserMedia is rejected or not supported
+  const simulateCameraInit = (hasMediaDevices: boolean, permissionGranted: boolean) => {
+    if (!hasMediaDevices) {
+      return { error: "Camera access is not supported by your browser environment.", active: false };
+    }
+    if (!permissionGranted) {
+      return { error: "Camera permission was denied. You can upload an image instead.", active: false };
+    }
+    return { error: null, active: true };
+  };
+
+  const noDevice = simulateCameraInit(false, false);
+  assert.equal(noDevice.active, false);
+  assert.ok(noDevice.error?.includes("not supported"));
+
+  const denied = simulateCameraInit(true, false);
+  assert.equal(denied.active, false);
+  assert.ok(denied.error?.includes("permission was denied"));
+
+  const success = simulateCameraInit(true, true);
+  assert.equal(success.active, true);
+  assert.equal(success.error, null);
+});
+

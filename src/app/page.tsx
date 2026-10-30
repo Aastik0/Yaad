@@ -11,6 +11,8 @@ import { CaptureModal } from "@/components/CaptureModal";
 import { RecallAnswerCard } from "@/components/RecallAnswerCard";
 import { ItemDetailModal } from "@/components/ItemDetailModal";
 import { DeveloperDrawer } from "@/components/DeveloperDrawer";
+import { GlassesSimulatorModal } from "@/components/GlassesSimulatorModal";
+import { DEFAULT_DEMO_COORDINATES } from "@/lib/geo";
 import {
   INITIAL_TRACKED_ITEMS,
   INITIAL_OBSERVATIONS,
@@ -35,6 +37,7 @@ export default function Home() {
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
   const [isDepartureModalOpen, setIsDepartureModalOpen] = useState(false);
   const [isDevDrawerOpen, setIsDevDrawerOpen] = useState(false);
+  const [isGlassesSimulatorOpen, setIsGlassesSimulatorOpen] = useState(false);
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<TrackedItem | null>(null);
   const [dismissedRecallQuery, setDismissedRecallQuery] = useState<string | null>(null);
 
@@ -259,6 +262,7 @@ export default function Home() {
         onTabChange={setActiveTab}
         unconfirmedCount={unconfirmedItems.length}
         onOpenDevDrawer={() => setIsDevDrawerOpen(true)}
+        onOpenGlassesSimulator={() => setIsGlassesSimulatorOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -346,6 +350,13 @@ export default function Home() {
       <DeveloperDrawer
         isOpen={isDevDrawerOpen}
         onClose={() => setIsDevDrawerOpen(false)}
+      />
+
+      <GlassesSimulatorModal
+        isOpen={isGlassesSimulatorOpen}
+        onClose={() => setIsGlassesSimulatorOpen(false)}
+        currentCoords={DEFAULT_DEMO_COORDINATES}
+        onConfirmCandidates={handleConfirmCandidates}
       />
 
       {/* Accessible Footer with Demo Controls */}

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { AnalyzeRequest, CandidateItemOutput } from "./schemas.ts";
+import type { AnalyzeRequestInput, CandidateItemOutput } from "./schemas.ts";
 import { SceneAnalysisResponseSchema } from "./schemas.ts";
 import { analyzeSceneWithMock } from "./mockVision.ts";
 import type { UsageLedgerEntry } from "../types/index.ts";
@@ -46,16 +46,18 @@ export function getUsageLedger(): {
 
 /**
  * Computes safe SHA-256 cache key without logging sensitive image contents
+ * Scoped to user_id to prevent sharing cached visual data across users.
  */
-function computeCacheKey(imageStr: string, query: string, model: string): string {
+export function computeCacheKey(userId: string, imageStr: string, query: string, model: string): string {
   const hash = crypto.createHash("sha256");
+  hash.update(userId);
   hash.update(model);
   hash.update(query.trim().toLowerCase());
   hash.update(imageStr.slice(0, 1024) + imageStr.slice(-1024)); // representative prefix+suffix
   return hash.digest("hex");
 }
 
-export async function analyzeScene(input: AnalyzeRequest): Promise<{
+export async function analyzeScene(input: AnalyzeRequestInput): Promise<{
   candidates: CandidateItemOutput[];
   source: "mock" | "cache" | "live_meta_api";
   metaModel?: string;
@@ -106,8 +108,8 @@ export async function analyzeScene(input: AnalyzeRequest): Promise<{
     };
   }
 
-  // 3. Cache lookup
-  const cacheKey = computeCacheKey(input.image, input.requestedQuery || "", MODEL_ID);
+  // 3. Cache lookup (strictly isolated per user_id)
+  const cacheKey = computeCacheKey(input.userId || "demo-user", input.image, input.requestedQuery || "", MODEL_ID);
   const cachedHit = requestCache.get(cacheKey);
   if (cachedHit) {
     usageLedger.push({
