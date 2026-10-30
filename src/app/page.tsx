@@ -81,16 +81,17 @@ export default function Home() {
     const q = searchQuery.trim().toLowerCase();
     if (q.length < 3 || dismissedRecallQuery === searchQuery) return null;
 
-    // Direct name match or keyword match
+    // Direct name match or keyword token match
     const match = trackedItems.find((item) => {
       const name = item.item_name.toLowerCase();
       const cat = (item.category || "").toLowerCase();
       const loc = item.last_location_description.toLowerCase();
+      const nameWords = name.split(/[\s-]+/).filter((w) => w.length > 3);
 
-      // Check key tokens like "keys", "wallet", "glasses", "bottle", "card"
       return (
         name.includes(q) ||
         q.includes(name) ||
+        nameWords.some((w) => q.includes(w)) ||
         (cat && q.includes(cat)) ||
         loc.includes(q) ||
         item.last_landmarks.some((lm) => q.includes(lm.toLowerCase()))
@@ -184,6 +185,12 @@ export default function Home() {
 
   const handleDeletePerson = (id: string) => {
     setPeopleMemories((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleUpdatePerson = (updated: PersonMemory) => {
+    setPeopleMemories((prev) =>
+      prev.map((p) => (p.id === updated.id ? updated : p))
+    );
   };
 
   // Reset all to original fixture state
@@ -303,7 +310,9 @@ export default function Home() {
         {activeTab === "people" && (
           <PeopleMemorySection
             people={peopleMemories}
+            currentUserId={DEMO_USER_ID}
             onAddPerson={handleAddPerson}
+            onUpdatePerson={handleUpdatePerson}
             onDeletePerson={handleDeletePerson}
           />
         )}
