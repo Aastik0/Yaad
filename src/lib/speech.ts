@@ -1,10 +1,48 @@
 /**
  * Speech synthesis helper for Yaad
- * Delivers calm spoken reminders using Web Speech API with fallback.
+ * Delivers calm spoken reminders and conversational memory feedback using Web Speech API with fallback.
+ * Respects user audio preferences and privacy settings.
  */
 
-export const speakCalmReminder = (text: string): boolean => {
+const VOICE_OUTPUT_STORAGE_KEY = "yaad_voice_output_enabled";
+
+/**
+ * Checks whether spoken audio responses are enabled by the user.
+ * Defaults to true if unconfigured.
+ */
+export const isVoiceOutputEnabled = (): boolean => {
+  if (typeof window === "undefined") return true;
+  try {
+    const stored = localStorage.getItem(VOICE_OUTPUT_STORAGE_KEY);
+    return stored !== "false";
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Toggles or sets user voice output preference in localStorage.
+ */
+export const setVoiceOutputEnabled = (enabled: boolean): void => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(VOICE_OUTPUT_STORAGE_KEY, enabled ? "true" : "false");
+  } catch (err) {
+    console.warn("Failed to persist voice output preference:", err);
+  }
+};
+
+/**
+ * Delivers a calm spoken utterance using browser speechSynthesis.
+ * Respects user voice output setting unless force is explicitly true.
+ */
+export const speakCalmReminder = (text: string, force: boolean = false): boolean => {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    return false;
+  }
+
+  // Respect user audio toggle
+  if (!force && !isVoiceOutputEnabled()) {
     return false;
   }
 
@@ -40,6 +78,9 @@ export const speakCalmReminder = (text: string): boolean => {
   }
 };
 
+/**
+ * Stops all ongoing speech synthesis immediately.
+ */
 export const stopSpeech = (): void => {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     try {
@@ -50,3 +91,27 @@ export const stopSpeech = (): void => {
   }
 };
 
+/**
+ * Spoken response helpers for Voice Interaction
+ */
+export const speakRecallResult = (itemName: string, locationDescription?: string | null): boolean => {
+  if (locationDescription) {
+    return speakCalmReminder(`Your ${itemName} was last recorded at ${locationDescription}.`);
+  }
+  return speakCalmReminder(`No sighting recorded for ${itemName}. Yaad records historical sightings only.`);
+};
+
+export const speakRememberConfirmation = (): boolean => {
+  return speakCalmReminder("Opening camera to remember your belongings.");
+};
+
+export const speakNavigationGuidance = (itemName: string, locationDescription?: string | null): boolean => {
+  if (locationDescription) {
+    return speakCalmReminder(`Navigation guidance for ${itemName}: last recorded near ${locationDescription}.`);
+  }
+  return speakCalmReminder(`No recorded location found for ${itemName} to navigate to.`);
+};
+
+export const speakUnknownIntent = (): boolean => {
+  return speakCalmReminder("I didn't recognize that command. Try asking 'Where are my keys?' or 'Remember my items'.");
+};
