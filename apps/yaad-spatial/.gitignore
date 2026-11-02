@@ -1,0 +1,50 @@
+# Unity .gitignore for Yaad Spatial (apps/yaad-spatial)
+# Strictly prevents committing large generated binaries, cache files, or IDE metadata
+
+# Unity generated folders
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+/*.csproj
+/*.unityproj
+/*.sln
+/*.suo
+/*.user
+/*.userprefs
+/*.pidb
+/*.booproj
+/*.svd
+/*.pdb
+/*.opendb
+/*.idb
+
+# Unity generated crash reports
+sysinfo.txt
+crash*
+
+# Builds and packages
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
