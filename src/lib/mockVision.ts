@@ -1,4 +1,4 @@
-import type { CandidateItem } from "../types/index.ts";
+import type { CandidateItem, ObservationSource } from "../types/index.ts";
 
 /**
  * Realistic Mock Vision Provider for Yaad Demo Mode
@@ -8,7 +8,7 @@ import type { CandidateItem } from "../types/index.ts";
 interface MockAnalysisInput {
   imageName?: string;
   requestedQuery?: string;
-  source?: "browser_upload" | "browser_camera" | "manual";
+  source?: ObservationSource;
 }
 
 export async function analyzeSceneWithMock(
