@@ -1,4 +1,4 @@
-import { ItemObservation, TrackedItem, PersonMemory } from "@/types";
+import type { ItemObservation, TrackedItem, PersonMemory } from "../types/index.ts";
 
 export const DEMO_USER_ID = "demo-user-yaad-01";
 
