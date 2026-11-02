@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   X,
   Upload,
@@ -9,15 +9,26 @@ import {
   Plus,
   ShieldCheck,
   AlertCircle,
+  AlertTriangle,
+  Info,
   Edit2,
   Trash2,
   Tag,
   MapPin,
   Mic,
   Compass,
+  Zap,
 } from "lucide-react";
 import { CandidateItem, GeoLocationCoordinates } from "@/types";
-import { getBrowserLocation, DEFAULT_DEMO_COORDINATES } from "@/lib/geo";
+import {
+  getBrowserLocation,
+  GeolocationCoordinator,
+  classifyGpsAccuracy,
+  GpsAccuracyTier,
+  GPS_TARGET_ACCURACY_METERS,
+  GPS_MAX_NAVIGATION_THRESHOLD_METERS,
+} from "@/lib/geo";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CaptureModalProps {
   isOpen: boolean;
@@ -41,25 +52,107 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
   const [imageFileName, setImageFileName] = useState<string>("");
   const [fileError, setFileError] = useState<string | null>(null);
 
-  // Geolocation state
-  const [currentCoords, setCurrentCoords] = useState<GeoLocationCoordinates>(DEFAULT_DEMO_COORDINATES);
+  // Geolocation state (Phase 24E: Bounded continuous acquisition & coordinator integration)
+  const { session } = useAuth();
+  const [currentCoords, setCurrentCoords] = useState<GeoLocationCoordinates | null>(null);
+  const [accuracyTier, setAccuracyTier] = useState<GpsAccuracyTier>("unavailable");
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState<boolean>(false);
-  const [isVoiceShortcutActive, setIsVoiceShortcutActive] = useState<boolean>(false);
+  const [tagUploadedPhotoWithCurrentGps, setTagUploadedPhotoWithCurrentGps] = useState<boolean>(false);
+  const [activeProvider, setActiveProvider] = useState<"mock" | "meta_muse">("mock");
+  const [budgetRemaining, setBudgetRemaining] = useState<number | null>(null);
+  const [showLiveConfirmDialog, setShowLiveConfirmDialog] = useState<boolean>(false);
 
-  // Fetch coordinates on modal open
+  // Bounded GPS acquisition using GeolocationCoordinator
+  const acquireGps = useCallback(async (isPrewarm: boolean = false) => {
+    setIsLocating(true);
+    try {
+      const result = await GeolocationCoordinator.getInstance().acquireBoundedGps({
+        targetAccuracyMeters: GPS_TARGET_ACCURACY_METERS, // <=10m early exit
+        timeoutMs: 15000,                                 // 15s hard ceiling
+        onProgress: ({ currentBest, tier }) => {
+          if (currentBest) {
+            setCurrentCoords(currentBest);
+            setAccuracyTier(tier);
+            setLocationError(null);
+          }
+        },
+      });
+
+      if (result.coordinates) {
+        setCurrentCoords(result.coordinates);
+        setAccuracyTier(result.tier);
+        setLocationError(null);
+      } else {
+        if (!isPrewarm) {
+          setCurrentCoords(null);
+          setAccuracyTier("unavailable");
+          setLocationError(result.error || "GPS unavailable or denied.");
+        }
+      }
+    } catch {
+      if (!isPrewarm) {
+        setCurrentCoords(null);
+        setAccuracyTier("unavailable");
+        setLocationError("Could not retrieve GPS coordinates.");
+      }
+    } finally {
+      setIsLocating(false);
+    }
+  }, []);
+
+  // Fetch active provider setting whenever modal is opened
   useEffect(() => {
     if (isOpen) {
-      setIsLocating(true);
-      getBrowserLocation().then(({ coordinates }) => {
-        setCurrentCoords(coordinates);
-        setIsLocating(false);
-      });
+      const fetchProviderStatus = async () => {
+        try {
+          const headers: Record<string, string> = {};
+          if (session?.access_token) {
+            headers["Authorization"] = `Bearer ${session.access_token}`;
+          }
+          const res = await fetch("/api/settings/vision-provider", { headers });
+          const json = await res.json();
+          if (json.success && json.activeProvider) {
+            setActiveProvider(json.activeProvider);
+            if (json.budget) {
+              setBudgetRemaining(json.budget.remainingUsd);
+            }
+          }
+        } catch {
+          setActiveProvider("mock");
+        }
+      };
+      fetchProviderStatus();
     }
-  }, [isOpen]);
+  }, [isOpen, session?.access_token]);
+  const [isVoiceShortcutActive, setIsVoiceShortcutActive] = useState<boolean>(false);
+
+  // Lifecycle & pre-warming: pre-warm only for camera mode, cancel on close
+  useEffect(() => {
+    if (isOpen) {
+      if (activeTab === "camera") {
+        acquireGps(true);
+      } else {
+        // Uploaded photos default to no GPS unless explicitly tagged
+        if (!tagUploadedPhotoWithCurrentGps) {
+          setCurrentCoords(null);
+          setAccuracyTier("unavailable");
+        }
+      }
+    } else {
+      // Modal closed: guarantee watcher cancellation and state reset
+      GeolocationCoordinator.getInstance().cancelAcquisition("CaptureModal closed.");
+      setCurrentCoords(null);
+      setAccuracyTier("unavailable");
+      setLocationError(null);
+      setTagUploadedPhotoWithCurrentGps(false);
+    }
+  }, [isOpen, activeTab, tagUploadedPhotoWithCurrentGps, acquireGps]);
 
   // Camera state
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [isCameraStarting, setIsCameraStarting] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -74,17 +167,26 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
   const [manualItemName, setManualItemName] = useState<string>("");
   const [manualLocation, setManualLocation] = useState<string>("");
 
-  // Clean up camera stream on unmount or tab switch
+  // Clean up camera stream on unmount, tab switch, or document backgrounding
   const stopCameraStream = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     setIsCameraActive(false);
+    setIsCameraStarting(false);
   };
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopCameraStream();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopCameraStream();
     };
   }, []);
@@ -102,12 +204,14 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     onClose();
   };
 
-  // Start Camera
+  // Start Camera with descriptive error differentiation
   const startCamera = async () => {
     setCameraError(null);
+    setIsCameraStarting(true);
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setCameraError("Camera access is not supported by your browser environment.");
+        setIsCameraStarting(false);
         return;
       }
 
@@ -122,11 +226,25 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
         videoRef.current.play();
       }
       setIsCameraActive(true);
+      setIsCameraStarting(false);
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : "Unable to access camera. Check device permissions.";
-      setCameraError(errorMsg);
+      setIsCameraStarting(false);
       setIsCameraActive(false);
+      if (err instanceof DOMException) {
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          setCameraError("Camera permission was denied. Please allow camera access in your browser address bar or settings, or upload an image instead.");
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          setCameraError("No camera hardware detected on this device. You can upload an image from your files instead.");
+        } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          setCameraError("Camera is currently in use by another application. Please close other camera apps and retry.");
+        } else {
+          setCameraError(`Camera Error (${err.name}): ${err.message}`);
+        }
+      } else {
+        const errorMsg =
+          err instanceof Error ? err.message : "Unable to access camera. Check device permissions.";
+        setCameraError(errorMsg);
+      }
     }
   };
 
@@ -144,13 +262,23 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     setSelectedImage(dataUrl);
     setImageFileName("Camera capture");
     stopCameraStream();
+
+    // Capture or converge fresh GPS at shutter time without blocking UI
+    if (!currentCoords || accuracyTier !== "target") {
+      acquireGps(false);
+    }
   };
 
-  // Handle file upload
+  // Handle file upload (Phase 24E: Defaults to NO GPS, never auto-attaches current location)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Reset coordinates for uploaded photo (default to no GPS)
+    setCurrentCoords(null);
+    setAccuracyTier("unavailable");
+    setTagUploadedPhotoWithCurrentGps(false);
 
     // Validate type
     const validTypes = ["image/jpeg", "image/png", "image/webp", "image/heic"];
@@ -176,23 +304,43 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
   // Analysis state & model source
   const [modelSource, setModelSource] = useState<string>("Demo Mock Engine");
 
-  // Trigger Analysis via Server Adapter
-  const handleAnalyze = async () => {
+  // Trigger Analysis via Server Adapter with Confirmation Check
+  const handleAnalyzeClick = () => {
     if (!selectedImage) {
       setFileError("Please select or capture a photo first.");
       return;
     }
 
+    if (activeProvider === "meta_muse") {
+      setShowLiveConfirmDialog(true);
+      return;
+    }
+
+    performAnalyze(false);
+  };
+
+  const performAnalyze = async (liveConfirmed: boolean) => {
+    if (!selectedImage) return;
+
     setIsAnalyzing(true);
     setFileError(null);
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           image: selectedImage,
           requestedQuery: requestedQuery,
           source: activeTab === "camera" ? "browser_camera" : "browser_upload",
+          requestedProvider: activeProvider,
+          liveConfirmed,
         }),
       });
 
@@ -266,7 +414,7 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
       selected,
       selectedImage || undefined,
       activeTab === "camera" ? "browser_camera" : "browser_upload",
-      currentCoords
+      currentCoords || undefined
     );
     handleClose();
   };
@@ -326,6 +474,7 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                 setImageFileName("Glasses POV Frame (Mapped at current GPS)");
                 setRequestedQuery("keys and wallet");
                 setTimeout(() => setIsVoiceShortcutActive(false), 800);
+                acquireGps(false);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-forest-300 hover:bg-forest-100 text-xs font-semibold text-forest-900 transition-colors shadow-xs"
             >
@@ -334,20 +483,68 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
             </button>
           </div>
 
-          {/* Location Coordinates Stamping Badge */}
-          <div className="flex items-center justify-between px-3 py-2 bg-ivory-100 rounded-lg border border-ivory-200 text-xs text-charcoal-700">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-forest-700 shrink-0" />
-              <span>
-                <strong>GPS Radius Origin: </strong>
-                {isLocating
-                  ? "Acquiring GPS coordinates..."
-                  : `${currentCoords.latitude}° N, ${Math.abs(currentCoords.longitude)}° W`}
+          {/* Location Coordinates Stamping Badge (Phase 24E: Measured Accuracy & Truthful Status) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between px-3 py-2 bg-ivory-100 rounded-lg border border-ivory-200 text-xs text-charcoal-700">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-forest-700 shrink-0" />
+                <span>
+                  <strong>Location: </strong>
+                  {isLocating
+                    ? "Acquiring GPS fix (measuring accuracy)..."
+                    : currentCoords
+                    ? `${currentCoords.latitude.toFixed(6)}° N, ${Math.abs(currentCoords.longitude).toFixed(6)}° W (measured accuracy ±${currentCoords.accuracy || 10}m)`
+                    : activeTab === "upload" && !tagUploadedPhotoWithCurrentGps
+                    ? "Uploaded photo: No GPS attached (indoor landmark grounding)"
+                    : "Indoor Landmark Grounded (No GPS recorded)"}
+                </span>
+              </div>
+              <span className="text-[11px] text-stone-500 font-medium">
+                {currentCoords
+                  ? currentCoords.accuracy && currentCoords.accuracy <= 10
+                    ? "Target accuracy (≤10m)"
+                    : currentCoords.accuracy && currentCoords.accuracy <= 30
+                    ? "Acceptable accuracy (≤30m)"
+                    : currentCoords.accuracy && currentCoords.accuracy <= 80
+                    ? "Coarse accuracy (≤80m)"
+                    : "Accuracy >80m (coarse)"
+                  : "Visual landmark grounding"}
               </span>
             </div>
-            <span className="text-[11px] text-stone-500 font-medium">
-              Radius: ~50m geofence
-            </span>
+
+            {/* Warning when accuracy > 80m */}
+            {currentCoords && currentCoords.accuracy && currentCoords.accuracy > 80 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-lg border border-amber-200 text-[11px] text-amber-900">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <span>
+                  Location accuracy (±{currentCoords.accuracy}m) exceeds the 80m threshold. Visual scene landmarks will be prioritized.
+                </span>
+              </div>
+            )}
+
+            {/* Warning when accuracy is coarse (31-80m) */}
+            {currentCoords && currentCoords.accuracy && currentCoords.accuracy > 30 && currentCoords.accuracy <= 80 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50/70 rounded-lg border border-amber-200 text-[11px] text-amber-900">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <span>
+                  Location accuracy (±{currentCoords.accuracy}m). Visual landmarks provide essential verification.
+                </span>
+              </div>
+            )}
+
+            {/* No-GPS explanation */}
+            {!currentCoords && !isLocating && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-ivory-50 rounded-lg border border-ivory-200 text-[11px] text-stone-600">
+                <Info className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                <span>
+                  {activeTab === "upload" && !tagUploadedPhotoWithCurrentGps
+                    ? "Uploaded photos default to no GPS. Check 'Tag with my current location' below if you want to record current coordinates."
+                    : locationError
+                    ? `${locationError} Grounding relies truthfully on scene landmarks.`
+                    : "GPS unavailable. Grounding relies truthfully on scene landmarks without fabricating location."}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Step 1: Capture or Upload (when no candidate review yet) */}
@@ -417,6 +614,13 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
               {/* Live Camera View */}
               {activeTab === "camera" && !selectedImage && (
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-forest-50/80 border border-forest-200/60 text-forest-800 text-[11px]">
+                    <ShieldCheck className="w-4 h-4 text-forest-600 shrink-0" />
+                    <span>
+                      <strong>Privacy Notice:</strong> Single photo snapshot only. No background video or audio is ever streamed or stored.
+                    </span>
+                  </div>
+
                   <div className="relative rounded-xl overflow-hidden bg-charcoal-900 aspect-video flex items-center justify-center">
                     <video
                       ref={videoRef}
@@ -424,18 +628,41 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                       muted
                       className="w-full h-full object-cover"
                     />
-                    {!isCameraActive && !cameraError && (
+
+                    {/* Viewfinder reticle overlay */}
+                    {isCameraActive && (
+                      <div className="absolute inset-4 pointer-events-none border border-white/20 rounded-lg flex flex-col justify-between p-2">
+                        <div className="flex justify-between items-center text-[10px] text-white/70 font-mono">
+                          <span className="bg-forest-900/80 px-2 py-0.5 rounded text-[9px] uppercase tracking-wider text-forest-200">
+                            Live Camera
+                          </span>
+                          <span>Ready</span>
+                        </div>
+                        <div className="text-center text-[10px] text-white/50">
+                          Align belongings inside frame
+                        </div>
+                      </div>
+                    )}
+
+                    {isCameraStarting && !cameraError && (
+                      <div className="text-center p-4 text-ivory-300 space-y-1">
+                        <Camera className="w-6 h-6 mx-auto animate-pulse text-forest-400" />
+                        <span className="text-xs">Requesting camera permission...</span>
+                      </div>
+                    )}
+
+                    {!isCameraActive && !isCameraStarting && !cameraError && (
                       <span className="text-xs text-ivory-300">
                         Initializing browser camera...
                       </span>
                     )}
 
                     {cameraError && (
-                      <div className="p-4 text-center text-ivory-100 space-y-2">
+                      <div className="p-4 text-center text-ivory-100 space-y-2 max-w-sm">
                         <AlertCircle className="w-6 h-6 text-terracotta-500 mx-auto" />
-                        <p className="text-xs font-medium">{cameraError}</p>
+                        <p className="text-xs font-medium leading-relaxed">{cameraError}</p>
                         <p className="text-[11px] text-stone-400">
-                          You can switch to File Upload above to select a photo.
+                          You can switch to File Upload above to select a photo from disk.
                         </p>
                       </div>
                     )}
@@ -446,7 +673,7 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold shadow-sm transition-all"
+                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold shadow-sm transition-all"
                       >
                         <Camera className="w-4 h-4" />
                         <span>Snap Scene Photo</span>
@@ -481,6 +708,50 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                       <span>Retake / Change</span>
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Upload Location Opt-In Toggle (Phase 24E) */}
+              {activeTab === "upload" && selectedImage && (
+                <div className="p-3 bg-ivory-50 rounded-xl border border-ivory-300 space-y-2">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tagUploadedPhotoWithCurrentGps}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setTagUploadedPhotoWithCurrentGps(checked);
+                        if (checked) {
+                          acquireGps(false);
+                        } else {
+                          GeolocationCoordinator.getInstance().cancelAcquisition("User disabled upload GPS tagging.");
+                          setCurrentCoords(null);
+                          setAccuracyTier("unavailable");
+                          setLocationError(null);
+                        }
+                      }}
+                      className="mt-0.5 rounded border-stone-300 text-forest-700 focus:ring-forest-600"
+                    />
+                    <div className="text-xs space-y-1">
+                      <span className="font-medium text-charcoal-800">
+                        Tag with my current location
+                      </span>
+                      <p className="text-[11px] text-stone-500 leading-normal">
+                        Tags this memory with your device&apos;s current location{currentCoords?.accuracy ? ` (±${currentCoords.accuracy}m)` : ""}. This records where you are uploading from now, not necessarily where the photo was originally taken.
+                      </p>
+                    </div>
+                  </label>
+                  {tagUploadedPhotoWithCurrentGps && isLocating && (
+                    <div className="flex items-center gap-2 text-[11px] text-forest-700 font-medium pl-6">
+                      <Compass className="w-3.5 h-3.5 animate-spin" />
+                      <span>Acquiring high-accuracy browser GPS (up to 15s)...</span>
+                    </div>
+                  )}
+                  {tagUploadedPhotoWithCurrentGps && currentCoords && (
+                    <div className="text-[11px] text-forest-800 font-mono pl-6">
+                      Coordinates: {currentCoords.latitude.toFixed(6)}, {currentCoords.longitude.toFixed(6)} (±{currentCoords.accuracy ?? "?"}m)
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -738,29 +1009,59 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
         <div className="px-5 py-4 bg-ivory-50 border-t border-ivory-300 flex items-center justify-between">
           {!candidates ? (
             <>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-charcoal-700 hover:bg-ivory-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAnalyze}
-                disabled={isAnalyzing || !selectedImage}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold transition-all shadow-xs disabled:opacity-50"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-sage-200" />
-                <span>{isAnalyzing ? "Analyzing Scene..." : "Analyze Scene"}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-stone-500 hidden sm:inline">Engine:</span>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                    activeProvider === "meta_muse"
+                      ? "bg-amber-100 text-amber-900 border border-amber-300"
+                      : "bg-forest-100 text-forest-800"
+                  }`}
+                >
+                  {activeProvider === "meta_muse" ? "Meta Muse (Live AI)" : "Mock AI (Free)"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-charcoal-700 hover:bg-ivory-200 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAnalyzeClick}
+                  disabled={isAnalyzing || !selectedImage}
+                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-xs disabled:opacity-50 cursor-pointer ${
+                    activeProvider === "meta_muse"
+                      ? "bg-amber-700 hover:bg-amber-800 text-white"
+                      : "bg-forest-700 hover:bg-forest-800 text-ivory-50"
+                  }`}
+                >
+                  {activeProvider === "meta_muse" ? (
+                    <Zap className="w-3.5 h-3.5 text-amber-200" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-sage-200" />
+                  )}
+                  <span>
+                    {isAnalyzing
+                      ? activeProvider === "meta_muse"
+                        ? "Querying Meta Muse..."
+                        : "Analyzing Scene..."
+                      : activeProvider === "meta_muse"
+                      ? "Analyze with Meta Muse"
+                      : "Analyze Scene"}
+                  </span>
+                </button>
+              </div>
             </>
           ) : (
             <>
               <button
                 type="button"
                 onClick={() => setCandidates(null)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-charcoal-700 hover:bg-ivory-200 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-charcoal-700 hover:bg-ivory-200 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Back to Image</span>
@@ -769,7 +1070,7 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                 type="button"
                 onClick={handleConfirmAll}
                 disabled={candidates.filter((c) => c.is_selected).length === 0}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold transition-all shadow-xs disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>
@@ -780,6 +1081,56 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog for Live Inference */}
+      {showLiveConfirmDialog && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-charcoal-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-ivory-300 shadow-2xl p-5 space-y-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-amber-700" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-semibold text-forest-900">
+                Confirm Live Meta AI Scene Analysis
+              </h3>
+              <p className="text-xs text-stone-600 mt-1">
+                You are about to submit this image frame to Meta Model API (<strong>muse-spark-1.3</strong>). This will consume API credits under your <strong>${budgetRemaining !== null ? budgetRemaining.toFixed(4) : "5.00"} testing allowance</strong>.
+              </p>
+            </div>
+
+            <div className="p-3 bg-ivory-50 rounded-xl border border-ivory-200 text-[11px] text-stone-600 space-y-1">
+              <p className="font-medium text-forest-900">Guarantees &amp; Safety:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-stone-500">
+                <li>Strict $5.00 spend cap enforced server-side</li>
+                <li>SHA-256 duplicate cache active</li>
+                <li>Zero credentials exposed to browser</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLiveConfirmDialog(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-medium text-stone-600 hover:bg-ivory-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLiveConfirmDialog(false);
+                  performAnalyze(true);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-200" />
+                <span>Confirm &amp; Analyze</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
