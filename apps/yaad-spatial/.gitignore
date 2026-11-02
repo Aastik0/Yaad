@@ -48,3 +48,6 @@ crash*
 ehthumbs.db
 Thumbs.db
 
+# Meta XR Immersive Debugger Dev Agent local credentials
+Assets/Resources/DevAgentSettings.asset
+

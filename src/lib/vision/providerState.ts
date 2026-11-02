@@ -131,6 +131,7 @@ export class VisionProviderState {
 
     if (provider === "mock") {
       this.userSelectedProvider = "mock";
+      this.isDeveloperConfirmed = false;
       return { success: true, activeProvider: "mock" };
     }
 
@@ -160,6 +161,11 @@ export class VisionProviderState {
 
   public setDeveloperConfirmed(confirmed: boolean): void {
     this.isDeveloperConfirmed = confirmed;
+  }
+
+  public disarm(): void {
+    this.userSelectedProvider = "mock";
+    this.isDeveloperConfirmed = false;
   }
 
   public resetForTesting(): void {

@@ -566,8 +566,12 @@ export default function Home() {
       <GlassesSimulatorModal
         isOpen={isGlassesSimulatorOpen}
         onClose={() => setIsGlassesSimulatorOpen(false)}
-        currentCoords={DEFAULT_DEMO_COORDINATES}
+        currentCoords={activeGpsCoords || DEFAULT_DEMO_COORDINATES}
         onConfirmCandidates={handleConfirmCandidates}
+        trackedItems={trackedItems}
+        onMarkCollected={handleMarkCollected}
+        onMarkLeftBehind={handleMarkLeftBehind}
+        peopleMemories={peopleMemories}
       />
 
       <AuthModal

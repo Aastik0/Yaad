@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     const result = state.selectProvider(provider, {
       userId: effectiveUserId,
-      developerConfirmed: developerConfirmed ?? true,
+      developerConfirmed: developerConfirmed ?? false,
     });
 
     const eligibility = state.getEligibility(effectiveUserId);

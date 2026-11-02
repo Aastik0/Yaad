@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PersonMemory } from "@/types";
 import {
   UserCheck,
@@ -31,6 +31,11 @@ export const PeopleMemorySection: React.FC<PeopleMemorySectionProps> = ({
   onUpdatePerson,
   onDeletePerson,
 }) => {
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [isAdding, setIsAdding] = useState(false);
   const [search, setSearch] = useState("");
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
@@ -467,7 +472,7 @@ export const PeopleMemorySection: React.FC<PeopleMemorySectionProps> = ({
               {groundedRecallResult.answer}
             </p>
             <p className="text-[11px] text-stone-500">
-              Source: Explicitly confirmed user note · Stored {new Date(groundedRecallResult.person.created_at).toLocaleDateString()}
+              Source: Explicitly confirmed user note · Stored {isMounted ? new Date(groundedRecallResult.person.created_at).toLocaleDateString() : groundedRecallResult.person.created_at.slice(0, 10)}
             </p>
           </div>
         </div>
@@ -564,7 +569,7 @@ export const PeopleMemorySection: React.FC<PeopleMemorySectionProps> = ({
                 <div className="flex items-center gap-1 text-[10px] text-stone-400">
                   <Clock className="w-3 h-3" />
                   <span>
-                    Saved {new Date(person.created_at).toLocaleDateString()}
+                    Saved {isMounted ? new Date(person.created_at).toLocaleDateString() : person.created_at.slice(0, 10)}
                   </span>
                 </div>
               </div>

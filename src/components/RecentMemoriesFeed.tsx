@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ItemObservation } from "@/types";
 import { History, Camera, Upload, Shield, Trash2, MapPin } from "lucide-react";
 import { isValidGeoCoordinates } from "@/lib/geo";
@@ -12,6 +12,11 @@ export const RecentMemoriesFeed: React.FC<RecentMemoriesFeedProps> = ({
   observations,
   onDeleteObservation,
 }) => {
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const getSourceIcon = (source: ItemObservation["source"]) => {
     switch (source) {
       case "browser_camera":
@@ -91,8 +96,10 @@ export const RecentMemoriesFeed: React.FC<RecentMemoriesFeedProps> = ({
                 </p>
 
                 <p className="text-[11px] text-stone-500">
-                  Recorded at {new Date(obs.observed_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Landmarks:{" "}
-                  <span className="text-charcoal-700">{obs.landmarks.join(", ")}</span>
+                  {isMounted
+                    ? `Recorded at ${new Date(obs.observed_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                    : "Recorded recently"}{" "}
+                  · Landmarks: <span className="text-charcoal-700">{obs.landmarks.join(", ")}</span>
                   {obs.coordinates && isValidGeoCoordinates(obs.coordinates) ? (
                     <span className="ml-2 font-mono text-[10px] text-forest-700 bg-forest-50 px-1.5 py-0.5 rounded border border-forest-100">
                       📍 {obs.coordinates.latitude.toFixed(6)}° N, {Math.abs(obs.coordinates.longitude).toFixed(6)}° W (±{obs.coordinates.accuracy || 10}m)

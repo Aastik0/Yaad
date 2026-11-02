@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Compass,
   MapPin,
@@ -28,6 +28,12 @@ export const NavigationHandoffCard: React.FC<NavigationHandoffCardProps> = ({
   onClose,
   className = "",
 }) => {
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const { type, item, headline, locationDescription, landmarks, coordinates, googleMapsUrl, appleMapsUrl, disclaimer } =
     resolution;
 
@@ -116,7 +122,7 @@ export const NavigationHandoffCard: React.FC<NavigationHandoffCardProps> = ({
               <Clock className="w-3.5 h-3.5 text-stone-400" />
               <span>
                 Observed:{" "}
-                {item?.last_observed_at
+                {isMounted && item?.last_observed_at
                   ? new Date(item.last_observed_at).toLocaleTimeString([], {
                       hour: "numeric",
                       minute: "2-digit",

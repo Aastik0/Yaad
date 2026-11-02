@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TrackedItem, TrackedItemStatus } from "@/types";
 import { StatusChip } from "./StatusChip";
 import { MapPin, Clock, Check, AlertCircle, RefreshCw } from "lucide-react";
@@ -22,6 +22,11 @@ export const TrackedBelongingsSection: React.FC<TrackedBelongingsSectionProps> =
   searchFilter,
 }) => {
   const [statusFilter, setStatusFilter] = useState<"all" | TrackedItemStatus>("all");
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const filteredItems = items.filter((item) => {
     // Search query match
@@ -41,6 +46,9 @@ export const TrackedBelongingsSection: React.FC<TrackedBelongingsSectionProps> =
   });
 
   const formatRelativeTime = (isoString: string) => {
+    if (!isMounted) {
+      return "recently";
+    }
     try {
       const diffMs = Date.now() - new Date(isoString).getTime();
       const mins = Math.max(1, Math.round(diffMs / (60 * 1000)));

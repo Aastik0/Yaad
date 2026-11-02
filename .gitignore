@@ -17,6 +17,16 @@
 # misc
 .DS_Store
 *.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# local secrets and credentials
+*credentials*.json
+*service-account*.json
+apps/yaad-spatial/Assets/Resources/DevAgentSettings.asset
 
 # debug
 npm-debug.log*

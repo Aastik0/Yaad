@@ -21,7 +21,7 @@ namespace Yaad.Spatial.Tests
         public static void RunAllTests()
         {
             int passed = 0;
-            int total = 11;
+            int total = 12;
 
             Debug.Log("[YaadSpatialBackendTests] Starting test suite...");
 
@@ -295,6 +295,51 @@ namespace Yaad.Spatial.Tests
             catch (Exception ex)
             {
                 Debug.LogError($"✖ Test 11 Exception: {ex.Message}");
+            }
+
+            // Test 12: AnalyzeRequestDto Serialization & Live Confirmation Defaults
+            try
+            {
+                var defaultDto = new AnalyzeRequestDto
+                {
+                    image = "data:image/jpeg;base64,sampleImageData",
+                    requestedQuery = "Where are my keys?",
+                    source = "glasses_sdk",
+                    userId = "test-user-id"
+                };
+                string defaultJson = JsonUtility.ToJson(defaultDto);
+                var deserializedDefault = JsonUtility.FromJson<AnalyzeRequestDto>(defaultJson);
+
+                var liveDto = new AnalyzeRequestDto
+                {
+                    image = "data:image/jpeg;base64,sampleImageData",
+                    requestedQuery = "Where are my keys?",
+                    source = "glasses_sdk",
+                    userId = "test-user-id",
+                    requestedProvider = "meta_muse",
+                    liveConfirmed = true
+                };
+                string liveJson = JsonUtility.ToJson(liveDto);
+                var deserializedLive = JsonUtility.FromJson<AnalyzeRequestDto>(liveJson);
+
+                if (!deserializedDefault.liveConfirmed &&
+                    deserializedLive.liveConfirmed &&
+                    deserializedLive.requestedProvider == "meta_muse" &&
+                    defaultJson.Contains("\"liveConfirmed\":false") &&
+                    liveJson.Contains("\"liveConfirmed\":true") &&
+                    liveJson.Contains("\"requestedProvider\":\"meta_muse\""))
+                {
+                    passed++;
+                    Debug.Log("✔ Test 12: AnalyzeRequestDto serialization and live confirmation defaults verified");
+                }
+                else
+                {
+                    Debug.LogError("✖ Test 12 Failed: AnalyzeRequestDto serialization mismatch");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"✖ Test 12 Exception: {ex.Message}");
             }
 
             Debug.Log($"[YaadSpatialBackendTests] Completed: {passed}/{total} tests passed.");

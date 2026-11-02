@@ -2,6 +2,16 @@ import type { ItemObservation, TrackedItem, PersonMemory } from "../types/index.
 
 export const DEMO_USER_ID = "demo-user-yaad-01";
 
+// Fixed deterministic ISO timestamps for fixtures across SSR and client hydration
+// Prevents dynamic Date.now() evaluation drift between server build and browser runtime
+const FIXTURE_T_MINUS_42M = "2026-11-01T11:18:00.000Z";
+const FIXTURE_T_MINUS_25M = "2026-11-01T11:35:00.000Z";
+const FIXTURE_T_MINUS_95M = "2026-11-01T10:25:00.000Z";
+const FIXTURE_T_MINUS_15M = "2026-11-01T11:45:00.000Z";
+const FIXTURE_T_MINUS_50M = "2026-11-01T11:10:00.000Z";
+const FIXTURE_T_MINUS_180M = "2026-11-01T09:00:00.000Z";
+const FIXTURE_T_MINUS_240M = "2026-11-01T08:00:00.000Z";
+
 export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
   {
     id: "item-01",
@@ -12,7 +22,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_observation_id: "obs-01",
     last_location_description: "On the wooden coffee table near the ceramic coffee mug",
     last_landmarks: ["wooden coffee table", "ceramic coffee mug", "open notebook"],
-    last_observed_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(), // 42 mins ago
+    last_observed_at: FIXTURE_T_MINUS_42M,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -20,7 +30,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
       place_name: "Mission District Artisan Cafe",
     },
     geofence_radius_meters: 50,
-    updated_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
+    updated_at: FIXTURE_T_MINUS_42M,
   },
   {
     id: "item-02",
@@ -31,7 +41,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_observation_id: "obs-02",
     last_location_description: "On the café round bistro table next to the laptop charger",
     last_landmarks: ["round bistro table", "laptop charger", "water glass"],
-    last_observed_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(), // 25 mins ago
+    last_observed_at: FIXTURE_T_MINUS_25M,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -39,7 +49,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
       place_name: "Mission District Artisan Cafe",
     },
     geofence_radius_meters: 50,
-    updated_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    updated_at: FIXTURE_T_MINUS_25M,
   },
   {
     id: "item-03",
@@ -50,7 +60,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_observation_id: "obs-03",
     last_location_description: "Beside the backpack on the side chair",
     last_landmarks: ["side chair", "green canvas backpack"],
-    last_observed_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(), // 95 mins ago
+    last_observed_at: FIXTURE_T_MINUS_95M,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -58,7 +68,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
       place_name: "Mission District Artisan Cafe",
     },
     geofence_radius_meters: 50,
-    updated_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    updated_at: FIXTURE_T_MINUS_15M,
   },
   {
     id: "item-04",
@@ -69,7 +79,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_observation_id: "obs-04",
     last_location_description: "Left on the hall console table near the front door key dish",
     last_landmarks: ["hall console table", "ceramic key dish", "mail stack"],
-    last_observed_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(), // 3 hours ago
+    last_observed_at: FIXTURE_T_MINUS_180M,
     coordinates: {
       latitude: 37.7785,
       longitude: -122.4121,
@@ -77,7 +87,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
       place_name: "Home Entrance Hall",
     },
     geofence_radius_meters: 30,
-    updated_at: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+    updated_at: FIXTURE_T_MINUS_50M,
   },
 ];
 
@@ -91,7 +101,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     landmarks: ["wooden coffee table", "ceramic coffee mug", "open notebook"],
     description: "Brass carabiner keychain recorded lying flat on oak surface beside a white ceramic mug.",
     confidence: "high",
-    observed_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
+    observed_at: FIXTURE_T_MINUS_42M,
     source: "browser_camera",
     coordinates: {
       latitude: 37.7749,
@@ -100,7 +110,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
       place_name: "Mission District Artisan Cafe",
     },
     user_confirmed: true,
-    created_at: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
+    created_at: FIXTURE_T_MINUS_42M,
   },
   {
     id: "obs-02",
@@ -111,7 +121,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     landmarks: ["round bistro table", "laptop charger", "water glass"],
     description: "Folded leather wallet recorded on the small cafe table next to an uncoiled USB-C power block.",
     confidence: "high",
-    observed_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    observed_at: FIXTURE_T_MINUS_25M,
     source: "browser_upload",
     coordinates: {
       latitude: 37.7749,
@@ -120,7 +130,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
       place_name: "Mission District Artisan Cafe",
     },
     user_confirmed: true,
-    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    created_at: FIXTURE_T_MINUS_25M,
   },
   {
     id: "obs-03",
@@ -131,7 +141,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     landmarks: ["side chair", "green canvas backpack"],
     description: "Insulated bottle standing upright next to the shoulder strap of the bag.",
     confidence: "medium",
-    observed_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
+    observed_at: FIXTURE_T_MINUS_95M,
     source: "browser_upload",
     coordinates: {
       latitude: 37.7749,
@@ -140,7 +150,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
       place_name: "Mission District Artisan Cafe",
     },
     user_confirmed: true,
-    created_at: new Date(Date.now() - 95 * 60 * 1000).toISOString(),
+    created_at: FIXTURE_T_MINUS_95M,
   },
   {
     id: "obs-04",
@@ -151,7 +161,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     landmarks: ["hall console table", "ceramic key dish", "mail stack"],
     description: "Tortoiseshell frame glasses resting folded in front of the empty ceramic mail tray.",
     confidence: "high",
-    observed_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
+    observed_at: FIXTURE_T_MINUS_180M,
     source: "browser_upload",
     coordinates: {
       latitude: 37.7785,
@@ -160,7 +170,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
       place_name: "Home Entrance Hall",
     },
     user_confirmed: true,
-    created_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
+    created_at: FIXTURE_T_MINUS_180M,
   },
 ];
 
@@ -173,8 +183,8 @@ export const INITIAL_PEOPLE_MEMORIES: PersonMemory[] = [
     notes: "Works on digital accessibility and tactile UI feedback. Mentioned she lives in Seattle and uses VoiceOver daily.",
     met_at: "Main Stage Hacker Lounge",
     met_on: "2026-10-28",
-    created_at: new Date(Date.now() - 240 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 240 * 60 * 1000).toISOString(),
+    created_at: FIXTURE_T_MINUS_240M,
+    updated_at: FIXTURE_T_MINUS_240M,
     user_confirmed: true,
   },
 ];

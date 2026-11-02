@@ -335,11 +335,115 @@ export default function MetaDisplayPage() {
     }
   }, [currentCoords, isAudioMuted, playHudSound]);
 
+  // Mark Item Collected (Priority 2C)
+  const handleMarkCollected = useCallback(async (itemNameOrId?: string) => {
+    try {
+      const repo = getStorageRepository(user);
+      const items = await repo.getItems();
+      const target = itemNameOrId
+        ? items.find(
+            (i) =>
+              i.id === itemNameOrId ||
+              i.item_name.toLowerCase().includes(itemNameOrId.toLowerCase())
+          )
+        : activeRecallResult
+        ? items.find(
+            (i) =>
+              i.item_name.toLowerCase() === activeRecallResult.itemName.toLowerCase()
+          )
+        : items.find((i) => i.status !== "collected");
+
+      if (target) {
+        await repo.updateItem(target.id, { status: "collected" });
+        playHudSound(900, "sine", 0.18);
+        setStatusMessage(`COLLECTED: ${target.item_name}`);
+        if (!isAudioMuted) {
+          speakCalmReminder(`Marked ${target.item_name} as collected.`);
+        }
+        await refreshTrackedItems();
+      } else {
+        setStatusMessage("NO UNCOLLECTED ITEM SELECTED");
+      }
+    } catch (err) {
+      console.error("[DisplayHUD] Mark collected error:", err);
+    }
+  }, [activeRecallResult, isAudioMuted, playHudSound, refreshTrackedItems, user]);
+
+  // Conversational People Memory Lookup (Priority 2F)
+  const handlePeopleRecall = useCallback(
+    async (personName: string) => {
+      setHudState("RECALLING");
+      setStatusMessage(`LOOKING UP CONTACT: "${personName}"...`);
+      playHudSound(600, "sine", 0.1);
+      try {
+        const repo = getStorageRepository(user);
+        const people = await repo.getPeople();
+        const cleanName = personName.toLowerCase().trim();
+        const match = people.find(
+          (p) =>
+            p.display_name.toLowerCase().includes(cleanName) ||
+            cleanName.includes(p.display_name.toLowerCase())
+        );
+
+        if (match) {
+          const speech = `${match.display_name} is your ${
+            match.context_or_relationship || "contact"
+          }. ${match.notes}`;
+          setActiveRecallResult({
+            itemName: match.display_name,
+            location: match.met_at || "Recorded Contact Note",
+            landmarks: [match.context_or_relationship || "Personal Note"],
+            observedAt: match.updated_at || match.created_at,
+            speechSummary: speech,
+          });
+          setStatusMessage(`CONTACT: ${match.display_name}`);
+          playHudSound(840, "sine", 0.15);
+          if (!isAudioMuted) {
+            speakCalmReminder(speech);
+          }
+        } else {
+          setActiveRecallResult(null);
+          setStatusMessage(`NO RECORD FOR "${personName}"`);
+          if (!isAudioMuted) {
+            speakCalmReminder(`I don't have any notes recorded for ${personName}.`);
+          }
+        }
+      } catch (err) {
+        console.error("[DisplayHUD] People recall error:", err);
+      }
+    },
+    [isAudioMuted, playHudSound, user]
+  );
+
   // Execute Voice Command Ingestion
   const handleVoiceCommand = useCallback((transcript: string) => {
     setVoiceTranscript(transcript);
     setIsListeningVoice(false);
     playHudSound(660, "sine", 0.1);
+
+    const lower = transcript.toLowerCase();
+
+    // Check for People Memory voice queries (Priority 2F)
+    if (lower.startsWith("who is") || lower.startsWith("who's")) {
+      const name = transcript.replace(/who is|who's/i, "").replace(/[?.]/g, "").trim();
+      handlePeopleRecall(name || "Sarah");
+      return;
+    }
+
+    // Check for Mark Collected voice commands (Priority 2C)
+    if (
+      lower.includes("got my") ||
+      lower.includes("collected") ||
+      lower.includes("have my") ||
+      lower.includes("found my")
+    ) {
+      const itemName = lower
+        .replace(/i (got|have|found) my/i, "")
+        .replace(/marked as collected/i, "")
+        .trim();
+      handleMarkCollected(itemName || undefined);
+      return;
+    }
 
     const intent = parseVoiceIntent(transcript);
     switch (intent.type) {
@@ -362,7 +466,14 @@ export default function MetaDisplayPage() {
         setStatusMessage(`COMMAND: "${transcript}"`);
         break;
     }
-  }, [activeRecallResult?.coordinates, executeRecallQuery, playHudSound, triggerCaptureAndAnalyze]);
+  }, [
+    activeRecallResult?.coordinates,
+    executeRecallQuery,
+    handleMarkCollected,
+    handlePeopleRecall,
+    playHudSound,
+    triggerCaptureAndAnalyze,
+  ]);
 
   // Geofence & Departure Trigger Simulation
   const handleSimulateDeparture = useCallback((offsetMeters: number) => {
@@ -482,6 +593,12 @@ export default function MetaDisplayPage() {
           setIsDevToolbarOpen((prev) => !prev);
           break;
 
+        case "c":
+        case "C":
+          e.preventDefault();
+          handleMarkCollected();
+          break;
+
         default:
           break;
       }
@@ -489,7 +606,7 @@ export default function MetaDisplayPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [confirmSelectedCandidate, detectedCandidates.length, executeRecallQuery, hudState, idleFocusIdx, playHudSound, triggerCaptureAndAnalyze, currentCoords]);
+  }, [confirmSelectedCandidate, detectedCandidates.length, executeRecallQuery, hudState, idleFocusIdx, playHudSound, triggerCaptureAndAnalyze, currentCoords, handleMarkCollected]);
 
   return (
     <div className="min-h-screen bg-[#070B0E] text-white flex flex-col items-center justify-center p-2 sm:p-4 font-sans select-none">
@@ -549,12 +666,20 @@ export default function MetaDisplayPage() {
           <div className="absolute inset-0 border border-emerald-500/10 pointer-events-none rounded-xl" />
 
           {/* ----------------- HUD HEADER (Telemetry Bar) ----------------- */}
-          <div className="relative z-10 flex items-center justify-between text-xs font-mono tracking-wider border-b border-gray-800/80 pb-3">
+          <div
+            role="status"
+            aria-live="polite"
+            className="relative z-10 flex items-center justify-between text-xs font-mono tracking-wider border-b border-gray-800/80 pb-3"
+          >
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-white font-bold tracking-widest">YAAD HUD</span>
               <span className="text-gray-500">•</span>
               <span className="text-emerald-400">{hudState}</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-sky-300 text-[10px] uppercase font-semibold">
+                {user ? `CLOUD (${user.email?.split("@")[0]})` : "DEMO"}
+              </span>
             </div>
 
             <div className="flex items-center gap-3 text-gray-400">
@@ -746,6 +871,17 @@ export default function MetaDisplayPage() {
                           Landmarks: {activeRecallResult.landmarks.join(" • ")}
                         </div>
                       )}
+
+                      <div className="flex items-center justify-between text-[11px] text-gray-400 font-mono pt-1 border-t border-gray-800/80">
+                        <span className="text-emerald-400">📷 [PHOTO ON FILE IN YAAD APP]</span>
+                        <Link
+                          href="/"
+                          target="_blank"
+                          className="text-sky-400 underline hover:text-sky-300"
+                        >
+                          View in Web App ↗
+                        </Link>
+                      </div>
                     </div>
 
                     {activeRecallResult.speechSummary && (
@@ -759,13 +895,23 @@ export default function MetaDisplayPage() {
                       >
                         BACK [ESC]
                       </button>
-                      <button
-                        onClick={() => setHudState("NAVIGATING")}
-                        className="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-black font-bold text-xs flex items-center gap-1.5 font-mono"
-                      >
-                        <Navigation className="w-3.5 h-3.5" />
-                        <span>NAVIGATE [ENTER]</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleMarkCollected()}
+                          className="px-3 py-1.5 rounded-lg border border-emerald-500/80 text-emerald-300 hover:bg-emerald-950/80 font-bold text-xs flex items-center gap-1 font-mono cursor-pointer"
+                          title="Mark collected (or press 'C')"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>COLLECTED [C]</span>
+                        </button>
+                        <button
+                          onClick={() => setHudState("NAVIGATING")}
+                          className="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-black font-bold text-xs flex items-center gap-1.5 font-mono cursor-pointer"
+                        >
+                          <Navigation className="w-3.5 h-3.5" />
+                          <span>NAVIGATE [ENTER]</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (

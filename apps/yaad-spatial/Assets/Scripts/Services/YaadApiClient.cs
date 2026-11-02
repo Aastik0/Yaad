@@ -72,6 +72,8 @@ namespace Yaad.Spatial.Services
         public string requestedQuery;
         public string source;
         public string userId;
+        public string requestedProvider;
+        public bool liveConfirmed;
     }
 
     [Serializable]
@@ -181,7 +183,7 @@ namespace Yaad.Spatial.Services
         public static YaadApiClient Instance { get; private set; }
 
         [Header("Backend Configuration")]
-        [SerializeField] private string baseUrl = "http://localhost:3000";
+        [SerializeField] private string baseUrl = "https://yaad-khaki.vercel.app";
         [SerializeField] private float requestTimeoutSeconds = 10.0f;
         [SerializeField] private bool runInCloudMode = false;
 
@@ -205,11 +207,18 @@ namespace Yaad.Spatial.Services
         }
 
         /// <summary>
-        /// Reads developer/testing session token from environment variables if present.
+        /// Reads developer/testing session token and backend URL from environment variables if present.
         /// Keeps secrets out of code and assets.
         /// </summary>
         public void LoadEnvironmentSession()
         {
+            string envUrl = Environment.GetEnvironmentVariable("YAAD_BACKEND_URL") ?? Environment.GetEnvironmentVariable("NEXT_PUBLIC_APP_URL");
+            if (!string.IsNullOrEmpty(envUrl))
+            {
+                SetBaseUrl(envUrl);
+                Debug.Log($"[YaadApiClient] Configured backend base URL from environment: {baseUrl}");
+            }
+
             string envToken = Environment.GetEnvironmentVariable("YAAD_SESSION_TOKEN") ?? Environment.GetEnvironmentVariable("SUPABASE_ACCESS_TOKEN");
             string envUser = Environment.GetEnvironmentVariable("YAAD_USER_ID") ?? Environment.GetEnvironmentVariable("SUPABASE_USER_ID");
             if (!string.IsNullOrEmpty(envToken))
@@ -332,9 +341,16 @@ namespace Yaad.Spatial.Services
         }
 
         /// <summary>
-        /// Analyze simulated camera frame via /api/analyze
+        /// Analyze simulated camera frame via /api/analyze.
+        /// Defaults to mock provider and liveConfirmed = false for safety.
+        /// Live Meta Muse inference requires explicit requestedProvider = "meta_muse" and liveConfirmed = true.
         /// </summary>
-        public void AnalyzeFrame(string base64Image, string query, Action<bool, List<SpatialDetectedCandidate>, string> onComplete)
+        public void AnalyzeFrame(
+            string base64Image,
+            string query,
+            Action<bool, List<SpatialDetectedCandidate>, string> onComplete,
+            string requestedProvider = "mock",
+            bool liveConfirmed = false)
         {
             if (!runInCloudMode)
             {
@@ -348,7 +364,9 @@ namespace Yaad.Spatial.Services
                 image = base64Image,
                 requestedQuery = query ?? "",
                 source = "glasses_sdk",
-                userId = CurrentUserId
+                userId = CurrentUserId,
+                requestedProvider = string.IsNullOrEmpty(requestedProvider) ? "mock" : requestedProvider,
+                liveConfirmed = liveConfirmed
             };
 
             string json = JsonUtility.ToJson(payload);
@@ -397,6 +415,18 @@ namespace Yaad.Spatial.Services
                     onComplete?.Invoke(false, null, err ?? "Analysis failed");
                 }
             }));
+        }
+
+        /// <summary>
+        /// Explicit opt-in for live Meta Muse inference frame analysis.
+        /// Explicitly passes requestedProvider: "meta_muse" and liveConfirmed = true.
+        /// </summary>
+        public void AnalyzeFrameLive(
+            string base64Image,
+            string query,
+            Action<bool, List<SpatialDetectedCandidate>, string> onComplete)
+        {
+            AnalyzeFrame(base64Image, query, onComplete, requestedProvider: "meta_muse", liveConfirmed: true);
         }
 
         /// <summary>

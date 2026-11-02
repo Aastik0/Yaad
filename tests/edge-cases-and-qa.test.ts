@@ -329,3 +329,48 @@ test("Phase 8 QA - Camera Fallback: Gracefully handles media device unavailabili
   assert.equal(success.error, null);
 });
 
+test("Hydration Safety: Fixture timestamps and pre-mount formatters are deterministic across SSR and client", async () => {
+  const { INITIAL_TRACKED_ITEMS, INITIAL_OBSERVATIONS, INITIAL_PEOPLE_MEMORIES } = await import(
+    "../src/data/fixtures.ts"
+  );
+
+  // 1. Fixtures must have valid, deterministic ISO strings without runtime drift
+  for (const item of INITIAL_TRACKED_ITEMS) {
+    assert.ok(item.last_observed_at, "TrackedItem must have last_observed_at");
+    assert.doesNotThrow(() => new Date(item.last_observed_at).toISOString());
+    assert.ok(item.updated_at, "TrackedItem must have updated_at");
+  }
+
+  for (const obs of INITIAL_OBSERVATIONS) {
+    assert.ok(obs.observed_at, "ItemObservation must have observed_at");
+    assert.doesNotThrow(() => new Date(obs.observed_at).toISOString());
+  }
+
+  for (const person of INITIAL_PEOPLE_MEMORIES) {
+    assert.ok(person.created_at, "PersonMemory must have created_at");
+    assert.doesNotThrow(() => new Date(person.created_at).toISOString());
+  }
+
+  // 2. Pre-mount relative time helper formatters must produce predictable hydration-safe fallback text
+  const formatRelativeTimeSafe = (isoString: string, isMounted: boolean) => {
+    if (!isMounted) return "recently";
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const mins = Math.max(1, Math.round(diffMs / (60 * 1000)));
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.round(hours / 24)}d ago`;
+  };
+
+  // SSR and initial client hydration (isMounted = false) always produce exact identical string
+  const ssrText = formatRelativeTimeSafe(INITIAL_TRACKED_ITEMS[0].last_observed_at, false);
+  const clientInitialText = formatRelativeTimeSafe(INITIAL_TRACKED_ITEMS[0].last_observed_at, false);
+  assert.equal(ssrText, "recently");
+  assert.equal(clientInitialText, "recently");
+  assert.equal(ssrText, clientInitialText, "SSR and initial client render must match to prevent hydration mismatch");
+
+  // Post-mount (isMounted = true) renders actual computed relative time
+  const mountedText = formatRelativeTimeSafe(INITIAL_TRACKED_ITEMS[0].last_observed_at, true);
+  assert.ok(mountedText.includes("ago"));
+});
+

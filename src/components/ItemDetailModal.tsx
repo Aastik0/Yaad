@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TrackedItem, ItemObservation } from "@/types";
 import { StatusChip } from "./StatusChip";
 import { SecureImage } from "./SecureImage";
@@ -35,6 +35,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   onUpdateItem,
   onDeleteItem,
 }) => {
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editedCategory, setEditedCategory] = useState("");
@@ -245,7 +250,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
             <div className="flex items-center gap-1 text-[11px] text-stone-400 pt-1">
               <Clock className="w-3 h-3" />
-              <span>Recorded at {new Date(item.last_observed_at).toLocaleString()}</span>
+              <span>Recorded at {isMounted ? new Date(item.last_observed_at).toLocaleString() : item.last_observed_at.slice(0, 10)}</span>
             </div>
 
             {/* GPS Location & Radius Tag */}
@@ -336,7 +341,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                     className="p-3 bg-ivory-50 rounded-lg border border-ivory-200 text-xs space-y-1.5"
                   >
                     <div className="flex items-center justify-between text-[11px] text-stone-500">
-                      <span>{new Date(obs.observed_at).toLocaleString()}</span>
+                      <span>{isMounted ? new Date(obs.observed_at).toLocaleString() : obs.observed_at.slice(0, 10)}</span>
                       <span className="capitalize font-medium text-forest-800">
                         {obs.confidence} confidence
                       </span>

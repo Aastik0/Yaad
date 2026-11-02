@@ -18,6 +18,9 @@ import {
   Mic,
   Compass,
   Zap,
+  Search,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { CandidateItem, GeoLocationCoordinates } from "@/types";
 import {
@@ -157,7 +160,8 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
 
   // Analysis & Candidates
-  const [requestedQuery, setRequestedQuery] = useState<string>("keys and wallet");
+  const [customQuery, setCustomQuery] = useState<string>("");
+  const [showCustomQuery, setShowCustomQuery] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [candidates, setCandidates] = useState<CandidateItem[] | null>(null);
   const [editingCandidateId, setEditingCandidateId] = useState<string | null>(null);
@@ -201,6 +205,9 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     setCameraError(null);
     setEditingCandidateId(null);
     setShowManualAdd(false);
+    setShowCustomQuery(false);
+    setCustomQuery("");
+    setShowLiveConfirmDialog(false);
     onClose();
   };
 
@@ -267,6 +274,13 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     if (!currentCoords || accuracyTier !== "target") {
       acquireGps(false);
     }
+
+    // Immediately analyze the captured image
+    if (activeProvider === "meta_muse") {
+      setShowLiveConfirmDialog(true);
+    } else {
+      performAnalyze(false, dataUrl);
+    }
   };
 
   // Handle file upload (Phase 24E: Defaults to NO GPS, never auto-attaches current location)
@@ -296,7 +310,15 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     setImageFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
-      setSelectedImage(event.target?.result as string);
+      const dataUrl = event.target?.result as string;
+      setSelectedImage(dataUrl);
+
+      // Immediately analyze uploaded image
+      if (activeProvider === "meta_muse") {
+        setShowLiveConfirmDialog(true);
+      } else {
+        performAnalyze(false, dataUrl);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -319,8 +341,13 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     performAnalyze(false);
   };
 
-  const performAnalyze = async (liveConfirmed: boolean) => {
-    if (!selectedImage) return;
+  const performAnalyze = async (
+    liveConfirmed: boolean,
+    imageOverride?: string,
+    queryOverride?: string
+  ) => {
+    const imageToAnalyze = imageOverride || selectedImage;
+    if (!imageToAnalyze) return;
 
     setIsAnalyzing(true);
     setFileError(null);
@@ -332,12 +359,14 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
+      const queryToSend = queryOverride !== undefined ? queryOverride : customQuery;
+
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers,
         body: JSON.stringify({
-          image: selectedImage,
-          requestedQuery: requestedQuery,
+          image: imageToAnalyze,
+          requestedQuery: queryToSend,
           source: activeTab === "camera" ? "browser_camera" : "browser_upload",
           requestedProvider: activeProvider,
           liveConfirmed,
@@ -349,7 +378,14 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
         throw new Error(data.error || "Analysis failed");
       }
 
-      setCandidates(data.candidates);
+      const rawCandidates: CandidateItem[] = data.candidates || [];
+      // Preselect all spotted belongings
+      setCandidates(
+        rawCandidates.map((c) => ({
+          ...c,
+          is_selected: c.is_selected !== false,
+        }))
+      );
       setModelSource(
         data.source === "live_meta_api"
           ? `Meta AI (${data.metaModel})`
@@ -407,11 +443,24 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
     setShowManualAdd(false);
   };
 
-  const handleConfirmAll = () => {
+  const handleRememberSelected = () => {
     if (!candidates) return;
     const selected = candidates.filter((c) => c.is_selected);
+    if (selected.length === 0) return;
     onConfirmCandidates(
       selected,
+      selectedImage || undefined,
+      activeTab === "camera" ? "browser_camera" : "browser_upload",
+      currentCoords || undefined
+    );
+    handleClose();
+  };
+
+  const handleRememberEverything = () => {
+    if (!candidates) return;
+    const allSelected = candidates.map((c) => ({ ...c, is_selected: true }));
+    onConfirmCandidates(
+      allSelected,
       selectedImage || undefined,
       activeTab === "camera" ? "browser_camera" : "browser_upload",
       currentCoords || undefined
@@ -470,11 +519,17 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
               onClick={() => {
                 setIsVoiceShortcutActive(true);
                 // Simulate POV camera snapshot from glasses
-                setSelectedImage("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23ECE8DD'/><text x='50%25' y='45%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%231E3A2B'>Meta Glasses POV Snapshot</text><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%236B7C67'>Oak Coffee Table · Keys &amp; Leather Wallet</text></svg>");
+                const pov = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23ECE8DD'/><text x='50%25' y='45%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%231E3A2B'>Meta Glasses POV Snapshot</text><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%236B7C67'>Oak Coffee Table · Keys &amp; Leather Wallet</text></svg>";
+                setSelectedImage(pov);
                 setImageFileName("Glasses POV Frame (Mapped at current GPS)");
-                setRequestedQuery("keys and wallet");
                 setTimeout(() => setIsVoiceShortcutActive(false), 800);
                 acquireGps(false);
+
+                if (activeProvider === "meta_muse") {
+                  setShowLiveConfirmDialog(true);
+                } else {
+                  performAnalyze(false, pov);
+                }
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-forest-300 hover:bg-forest-100 text-xs font-semibold text-forest-900 transition-colors shadow-xs"
             >
@@ -548,7 +603,37 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
           </div>
 
           {/* Step 1: Capture or Upload (when no candidate review yet) */}
-          {!candidates ? (
+          {isAnalyzing ? (
+            <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-4 bg-ivory-50/50 rounded-2xl border border-ivory-200">
+              <div className="relative">
+                {selectedImage ? (
+                  <div className="relative w-36 h-36 rounded-2xl overflow-hidden border-2 border-forest-600 shadow-md">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selectedImage}
+                      alt="Scene being analyzed"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-forest-950/40 backdrop-blur-[1px] flex items-center justify-center">
+                      <Sparkles className="w-8 h-8 text-sage-200 animate-spin" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-forest-100 flex items-center justify-center text-forest-800 animate-pulse">
+                    <Sparkles className="w-8 h-8" />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm sm:text-base font-semibold text-forest-900">
+                  Scanning scene for belongings...
+                </h3>
+                <p className="text-xs text-stone-500 max-w-xs">
+                  Yaad is identifying your belongings and grounding them to visible landmarks.
+                </p>
+              </div>
+            </div>
+          ) : !candidates ? (
             <div className="space-y-4">
               {/* Method Switcher Tabs */}
               <div className="flex rounded-xl bg-ivory-200 p-1">
@@ -598,7 +683,7 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                       Click to browse or drop an image
                     </span>
                     <span className="text-xs text-stone-500 mt-1">
-                      Supports JPG, PNG, WebP up to 10MB
+                      Supports JPG, PNG, WebP up to 10MB · Automatically spots belongings
                     </span>
                     <input
                       id="file-upload"
@@ -673,7 +758,7 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold shadow-sm transition-all"
+                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold shadow-sm transition-all cursor-pointer"
                       >
                         <Camera className="w-4 h-4" />
                         <span>Snap Scene Photo</span>
@@ -683,8 +768,8 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                 </div>
               )}
 
-              {/* Image Preview if selected */}
-              {selectedImage && (
+              {/* Image Preview if selected but analysis waiting */}
+              {selectedImage && !isAnalyzing && (
                 <div className="relative rounded-xl overflow-hidden border border-ivory-300 bg-ivory-50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -762,42 +847,6 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                 </div>
               )}
 
-              {/* Target items query input & chips */}
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-charcoal-800">
-                  Target belongings to identify:
-                </label>
-                <input
-                  type="text"
-                  value={requestedQuery}
-                  onChange={(e) => setRequestedQuery(e.target.value)}
-                  placeholder="e.g. keys, wallet, sunglasses, water bottle"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-ivory-300 focus:outline-none focus:border-forest-600 focus:ring-1 focus:ring-forest-600"
-                />
-
-                {/* Quick preset tags */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  <span className="text-[11px] text-stone-500 flex items-center gap-1">
-                    <Tag className="w-3 h-3" /> Quick fill:
-                  </span>
-                  {[
-                    "keys and wallet",
-                    "reading glasses",
-                    "water bottle",
-                    "backpack and laptop",
-                  ].map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setRequestedQuery(tag)}
-                      className="px-2 py-0.5 rounded bg-ivory-200 hover:bg-ivory-300 text-[11px] text-charcoal-700 font-medium transition-colors"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Privacy note */}
               <div className="p-3 bg-ivory-100 rounded-lg border border-ivory-200 text-xs text-charcoal-700 flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-forest-700 shrink-0 mt-0.5" />
@@ -807,28 +856,28 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
               </div>
             </div>
           ) : (
-            /* Step 2: Candidate Review & Human Confirmation */
+            /* Step 2: AI Suggests Objects - User Chooses What to Remember */
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-ivory-200">
-                <div>
+              <div className="flex items-start justify-between pb-3 border-b border-ivory-200 gap-3">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-forest-900">
-                      Review AI Suggestions ({candidates.filter((c) => c.is_selected).length} selected)
+                    <h3 className="text-base font-semibold text-forest-900">
+                      I spotted these belongings
                     </h3>
                     <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-ivory-100 text-forest-800 border border-ivory-300">
                       {modelSource}
                     </span>
                   </div>
-                  <p className="text-[11px] text-stone-500">
-                    Verify location and landmarks before tracking. Suggestions do not become memories until confirmed.
+                  <p className="text-xs text-stone-600">
+                    Choose what to remember. Unchecked items will not be saved.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowManualAdd(!showManualAdd)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-forest-800 bg-forest-50 hover:bg-forest-100 rounded-md border border-forest-200 transition-colors"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-forest-800 bg-forest-50 hover:bg-forest-100 rounded-lg border border-forest-200 transition-colors shrink-0"
                 >
-                  <Plus className="w-3 h-3" />
+                  <Plus className="w-3.5 h-3.5" />
                   <span>Add Missing Item</span>
                 </button>
               </div>
@@ -849,27 +898,27 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                       placeholder="Item name (e.g. Earbud case)"
                       value={manualItemName}
                       onChange={(e) => setManualItemName(e.target.value)}
-                      className="px-2.5 py-1.5 rounded border border-ivory-300 bg-white"
+                      className="px-2.5 py-1.5 rounded-lg border border-ivory-300 bg-white"
                     />
                     <input
                       type="text"
                       placeholder="Location (e.g. Next to laptop)"
                       value={manualLocation}
                       onChange={(e) => setManualLocation(e.target.value)}
-                      className="px-2.5 py-1.5 rounded border border-ivory-300 bg-white"
+                      className="px-2.5 py-1.5 rounded-lg border border-ivory-300 bg-white"
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => setShowManualAdd(false)}
-                      className="px-2.5 py-1 rounded text-stone-600 hover:bg-ivory-200"
+                      className="px-2.5 py-1 rounded-lg text-stone-600 hover:bg-ivory-200"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-3 py-1 rounded bg-forest-700 text-ivory-50 font-medium"
+                      className="px-3 py-1 rounded-lg bg-forest-700 text-ivory-50 font-medium"
                     >
                       Add Candidate
                     </button>
@@ -878,128 +927,193 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
               )}
 
               {/* Candidate Cards */}
-              <div className="space-y-3">
-                {candidates.map((cand) => (
-                  <div
-                    key={cand.id}
-                    className={`rounded-xl border p-4 transition-all ${
-                      cand.is_selected
-                        ? "border-forest-600 bg-forest-50/20 shadow-xs"
-                        : "border-ivory-300 bg-white opacity-60"
-                    }`}
-                  >
-                    {editingCandidateId === cand.id ? (
-                      /* Editable mode */
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <label className="font-medium text-stone-600 block mb-0.5">
-                            Item Name
-                          </label>
-                          <input
-                            type="text"
-                            value={cand.item_name}
-                            onChange={(e) =>
-                              updateCandidateField(cand.id, "item_name", e.target.value)
-                            }
-                            className="w-full px-2.5 py-1.5 rounded border border-ivory-300 bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="font-medium text-stone-600 block mb-0.5">
-                            Location Description
-                          </label>
-                          <input
-                            type="text"
-                            value={cand.location_description}
-                            onChange={(e) =>
-                              updateCandidateField(
-                                cand.id,
-                                "location_description",
-                                e.target.value
-                              )
-                            }
-                            className="w-full px-2.5 py-1.5 rounded border border-ivory-300 bg-white"
-                          />
-                        </div>
-                        <div className="flex justify-end pt-1">
-                          <button
-                            type="button"
-                            onClick={() => setEditingCandidateId(null)}
-                            className="px-3 py-1 rounded bg-forest-700 text-ivory-50 text-xs font-medium"
-                          >
-                            Done Editing
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Display mode */
-                      <div className="flex items-start justify-between gap-3">
-                        <div
-                          onClick={() => toggleSelectCandidate(cand.id)}
-                          className="space-y-1 flex-1 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-forest-900">
-                              {cand.item_name}
-                            </span>
-                            <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-forest-100 text-forest-800">
-                              {cand.confidence} confidence
-                            </span>
-                          </div>
-
-                          <p className="text-xs text-charcoal-800">
-                            <span className="font-medium text-stone-500">Observed at: </span>
-                            {cand.location_description}
-                          </p>
-
-                          <div className="flex items-center gap-1 text-[11px] text-stone-500 flex-wrap">
-                            <span>Landmarks:</span>
-                            {cand.landmarks.map((lm, idx) => (
-                              <span
-                                key={idx}
-                                className="px-1.5 py-0.2 rounded bg-ivory-100 border border-ivory-200 text-charcoal-700"
-                              >
-                                {lm}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Controls: Edit, Delete, Toggle Checkbox */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => setEditingCandidateId(cand.id)}
-                            className="p-1.5 rounded hover:bg-ivory-200 text-stone-400 hover:text-charcoal-700 transition-colors"
-                            title="Edit suggestion"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteCandidate(cand.id)}
-                            className="p-1.5 rounded hover:bg-terracotta-50 text-stone-400 hover:text-terracotta-600 transition-colors"
-                            title="Reject suggestion"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectCandidate(cand.id)}
-                            className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all ${
-                              cand.is_selected
-                                ? "bg-forest-700 border-forest-700 text-ivory-50"
-                                : "border-stone-300 bg-white"
-                            }`}
-                            title={cand.is_selected ? "Track this item" : "Do not track"}
-                          >
-                            {cand.is_selected && <Check className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </div>
-                    )}
+              <div className="space-y-2.5">
+                {candidates.length === 0 ? (
+                  <div className="p-6 text-center bg-ivory-50 rounded-xl border border-ivory-200 space-y-2">
+                    <p className="text-xs text-stone-600">
+                      No personal belongings detected in this scene.
+                    </p>
+                    <p className="text-[11px] text-stone-400">
+                      You can add items manually with the &quot;Add Missing Item&quot; button above, or re-scan below.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  candidates.map((cand) => (
+                    <div
+                      key={cand.id}
+                      className={`rounded-xl border p-3.5 transition-all ${
+                        cand.is_selected
+                          ? "border-forest-600 bg-forest-50/30 shadow-xs"
+                          : "border-ivory-300 bg-white/70 opacity-60"
+                      }`}
+                    >
+                      {editingCandidateId === cand.id ? (
+                        /* Editable mode */
+                        <div className="space-y-2 text-xs">
+                          <div>
+                            <label className="font-medium text-stone-600 block mb-0.5">
+                              Item Name
+                            </label>
+                            <input
+                              type="text"
+                              value={cand.item_name}
+                              onChange={(e) =>
+                                updateCandidateField(cand.id, "item_name", e.target.value)
+                              }
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-ivory-300 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="font-medium text-stone-600 block mb-0.5">
+                              Location Description
+                            </label>
+                            <input
+                              type="text"
+                              value={cand.location_description}
+                              onChange={(e) =>
+                                updateCandidateField(
+                                  cand.id,
+                                  "location_description",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-ivory-300 bg-white"
+                            />
+                          </div>
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingCandidateId(null)}
+                              className="px-3 py-1 rounded-lg bg-forest-700 text-ivory-50 text-xs font-medium"
+                            >
+                              Done Editing
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Display mode */
+                        <div className="flex items-start justify-between gap-3">
+                          <div
+                            onClick={() => toggleSelectCandidate(cand.id)}
+                            className="space-y-1.5 flex-1 cursor-pointer select-none"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-forest-900">
+                                {cand.item_name}
+                              </span>
+                              <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-forest-100 text-forest-800">
+                                {cand.confidence} confidence
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-charcoal-800">
+                              <span className="font-medium text-stone-500">Observed at: </span>
+                              {cand.location_description}
+                            </p>
+
+                            {cand.landmarks && cand.landmarks.length > 0 && (
+                              <div className="flex items-center gap-1 text-[11px] text-stone-500 flex-wrap">
+                                <span>Landmarks:</span>
+                                {cand.landmarks.map((lm, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-1.5 py-0.2 rounded bg-ivory-100 border border-ivory-200 text-charcoal-700"
+                                  >
+                                    {lm}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Controls: Edit, Delete, Toggle Checkbox */}
+                          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setEditingCandidateId(cand.id)}
+                              className="p-1.5 rounded-lg hover:bg-ivory-200 text-stone-400 hover:text-charcoal-700 transition-colors"
+                              title="Edit item name or location"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteCandidate(cand.id)}
+                              className="p-1.5 rounded-lg hover:bg-terracotta-50 text-stone-400 hover:text-terracotta-600 transition-colors"
+                              title="Reject suggestion"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleSelectCandidate(cand.id)}
+                              className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all cursor-pointer ${
+                                cand.is_selected
+                                  ? "bg-forest-700 border-forest-700 text-ivory-50 shadow-xs"
+                                  : "border-stone-300 bg-white hover:border-forest-500"
+                              }`}
+                              title={cand.is_selected ? "Deselect item" : "Select item"}
+                            >
+                              {cand.is_selected && <Check className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Optional: Tell Yaad what to look for */}
+              <div className="pt-2 border-t border-ivory-200">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomQuery(!showCustomQuery)}
+                  className="inline-flex items-center gap-1.5 text-xs text-forest-800 hover:text-forest-950 font-medium py-1 transition-colors"
+                >
+                  <Search className="w-3.5 h-3.5 text-forest-700" />
+                  <span>Tell Yaad what to look for</span>
+                  {showCustomQuery ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+
+                {showCustomQuery && (
+                  <div className="mt-2 p-3 rounded-xl bg-ivory-50 border border-ivory-200 space-y-2">
+                    <p className="text-[11px] text-stone-600">
+                      Looking for something specific? Type what to find and re-scan this scene:
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customQuery}
+                        onChange={(e) => setCustomQuery(e.target.value)}
+                        placeholder="e.g. passport, badge, green water bottle..."
+                        className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-ivory-300 bg-white text-forest-950 focus:outline-none focus:ring-1 focus:ring-forest-600"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (customQuery.trim()) {
+                              performAnalyze(false, selectedImage || undefined, customQuery);
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={isAnalyzing || !customQuery.trim()}
+                        onClick={() =>
+                          performAnalyze(false, selectedImage || undefined, customQuery)
+                        }
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-forest-700 hover:bg-forest-800 text-white disabled:opacity-50 transition-colors cursor-pointer"
+                      >
+                        Re-scan
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1048,10 +1162,8 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                     {isAnalyzing
                       ? activeProvider === "meta_muse"
                         ? "Querying Meta Muse..."
-                        : "Analyzing Scene..."
-                      : activeProvider === "meta_muse"
-                      ? "Analyze with Meta Muse"
-                      : "Analyze Scene"}
+                        : "Scanning Scene..."
+                      : "Scan Belongings"}
                   </span>
                 </button>
               </div>
@@ -1060,23 +1172,38 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
             <>
               <button
                 type="button"
-                onClick={() => setCandidates(null)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-charcoal-700 hover:bg-ivory-200 transition-colors cursor-pointer"
+                onClick={() => {
+                  setCandidates(null);
+                  if (activeTab === "camera") {
+                    startCamera();
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-charcoal-700 hover:bg-ivory-200 transition-colors cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" />
-                <span>Back to Image</span>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Retake Photo</span>
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmAll}
-                disabled={candidates.filter((c) => c.is_selected).length === 0}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>
-                  Confirm &amp; Track ({candidates.filter((c) => c.is_selected).length}) Items
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRememberEverything}
+                  disabled={candidates.length === 0}
+                  className="px-3.5 py-2 rounded-xl border border-forest-600/40 text-forest-800 hover:bg-forest-100/60 text-xs font-semibold transition-all disabled:opacity-40 cursor-pointer"
+                >
+                  Remember Everything
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRememberSelected}
+                  disabled={candidates.filter((c) => c.is_selected).length === 0}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-ivory-50 text-xs font-semibold transition-all shadow-xs disabled:opacity-40 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>
+                    Remember Selected ({candidates.filter((c) => c.is_selected).length})
+                  </span>
+                </button>
+              </div>
             </>
           )}
         </div>

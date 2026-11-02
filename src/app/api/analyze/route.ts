@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     } finally {
       // Disarm live mode after any live inference attempt to prevent accidental repeats
       if (wantsLive) {
-        providerState.selectProvider("mock");
+        providerState.disarm();
       }
     }
 
