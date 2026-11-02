@@ -89,6 +89,9 @@ export interface UsageLedgerEntry {
   output_tokens: number;
   cached: boolean;
   estimated_cost_usd: number;
-  status: 'success' | 'rate_limited' | 'error' | 'kill_switch_blocked';
+  status: 'success' | 'rate_limited' | 'error' | 'kill_switch_blocked' | 'truncated';
   notes?: string;
+  user_id?: string;
+  cached_tokens?: number;
+  actual_cost_usd?: number;
 }
