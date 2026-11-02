@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { TrackedItem, TrackedItemStatus } from "@/types";
 import { StatusChip } from "./StatusChip";
 import { MapPin, Clock, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { isValidGeoCoordinates } from "@/lib/geo";
 
 interface TrackedBelongingsSectionProps {
   items: TrackedItem[];
@@ -138,14 +139,19 @@ export const TrackedBelongingsSection: React.FC<TrackedBelongingsSectionProps> =
                     <span>{item.last_location_description}</span>
 
                     {/* GPS Coordinates Stamping */}
-                    {item.coordinates && (
+                    {item.coordinates && isValidGeoCoordinates(item.coordinates) ? (
                       <div className="mt-1.5 pt-1.5 border-t border-ivory-200/80 flex items-center justify-between text-[11px] text-stone-600 flex-wrap gap-1">
                         <span className="font-mono text-[10px] text-forest-800 font-semibold bg-forest-50 px-1.5 py-0.5 rounded border border-forest-100">
-                          GPS: {item.coordinates.latitude}° N, {Math.abs(item.coordinates.longitude)}° W
+                          GPS: {item.coordinates.latitude.toFixed(6)}° N, {Math.abs(item.coordinates.longitude).toFixed(6)}° W (±{item.coordinates.accuracy || 10}m)
                         </span>
                         <span className="text-[10px] text-stone-400">
                           Radius: {item.geofence_radius_meters || 50}m
                         </span>
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 pt-1.5 border-t border-ivory-200/80 flex items-center gap-1 text-[10px] text-stone-500">
+                        <MapPin className="w-3 h-3 text-stone-400 shrink-0" />
+                        <span>Indoor Landmark Grounded (No GPS)</span>
                       </div>
                     )}
                   </div>

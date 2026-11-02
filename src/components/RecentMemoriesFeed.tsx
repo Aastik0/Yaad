@@ -1,6 +1,7 @@
 import React from "react";
 import { ItemObservation } from "@/types";
-import { History, Camera, Upload, Shield, Trash2 } from "lucide-react";
+import { History, Camera, Upload, Shield, Trash2, MapPin } from "lucide-react";
+import { isValidGeoCoordinates } from "@/lib/geo";
 
 interface RecentMemoriesFeedProps {
   observations: ItemObservation[];
@@ -92,9 +93,13 @@ export const RecentMemoriesFeed: React.FC<RecentMemoriesFeedProps> = ({
                 <p className="text-[11px] text-stone-500">
                   Recorded at {new Date(obs.observed_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Landmarks:{" "}
                   <span className="text-charcoal-700">{obs.landmarks.join(", ")}</span>
-                  {obs.coordinates && (
-                    <span className="ml-2 font-mono text-[10px] text-forest-700 bg-forest-50 px-1.5 py-0.2 rounded border border-forest-100">
-                      📍 {obs.coordinates.latitude}° N, {Math.abs(obs.coordinates.longitude)}° W
+                  {obs.coordinates && isValidGeoCoordinates(obs.coordinates) ? (
+                    <span className="ml-2 font-mono text-[10px] text-forest-700 bg-forest-50 px-1.5 py-0.5 rounded border border-forest-100">
+                      📍 {obs.coordinates.latitude.toFixed(6)}° N, {Math.abs(obs.coordinates.longitude).toFixed(6)}° W (±{obs.coordinates.accuracy || 10}m)
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-[10px] text-stone-500 bg-ivory-100 px-1.5 py-0.5 rounded border border-ivory-200">
+                      📍 Indoor Landmark Grounded (No GPS)
                     </span>
                   )}
                 </p>

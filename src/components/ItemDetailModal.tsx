@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { TrackedItem, ItemObservation } from "@/types";
 import { StatusChip } from "./StatusChip";
+import { SecureImage } from "./SecureImage";
 import {
   X,
   MapPin,
@@ -13,7 +14,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
+  ExternalLink,
 } from "lucide-react";
+import { generateGoogleMapsUrl, generateAppleMapsUrl, isValidGeoCoordinates } from "@/lib/geo";
 
 interface ItemDetailModalProps {
   isOpen: boolean;
@@ -246,14 +249,14 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
             </div>
 
             {/* GPS Location & Radius Tag */}
-            {item.coordinates && (
-              <div className="mt-2 pt-2 border-t border-ivory-200 text-xs text-charcoal-800 space-y-1">
+            {item.coordinates && isValidGeoCoordinates(item.coordinates) ? (
+              <div className="mt-2 pt-2 border-t border-ivory-200 text-xs text-charcoal-800 space-y-1.5">
                 <span className="text-[10px] uppercase font-semibold text-stone-500 block">
                   GPS Geofence Origin
                 </span>
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
                   <span className="font-mono text-forest-800 bg-forest-50 px-2 py-0.5 rounded border border-forest-100 font-medium">
-                    {item.coordinates.latitude}° N, {Math.abs(item.coordinates.longitude)}° W
+                    {item.coordinates.latitude.toFixed(6)}° N, {Math.abs(item.coordinates.longitude).toFixed(6)}° W (±{item.coordinates.accuracy || 10}m)
                   </span>
                   <span className="text-stone-500">
                     Radius: {item.geofence_radius_meters || 50}m
@@ -264,6 +267,52 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                     Location: {item.coordinates.place_name}
                   </p>
                 )}
+                {item.coordinates.accuracy && item.coordinates.accuracy > 65 && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-800 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>
+                      Low GPS accuracy (±{item.coordinates.accuracy}m). Visual landmarks provide primary grounding.
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-1.5">
+                  <a
+                    href={generateGoogleMapsUrl(
+                      item.coordinates.latitude,
+                      item.coordinates.longitude,
+                      item.item_name
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-forest-700 hover:bg-forest-800 text-white transition-colors"
+                  >
+                    <span>Google Maps</span>
+                    <ExternalLink className="w-3 h-3 text-sage-200" />
+                  </a>
+                  <a
+                    href={generateAppleMapsUrl(
+                      item.coordinates.latitude,
+                      item.coordinates.longitude,
+                      item.item_name
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-stone-800 hover:bg-stone-900 text-white transition-colors"
+                  >
+                    <span>Apple Maps</span>
+                    <ExternalLink className="w-3 h-3 text-stone-300" />
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 pt-2 border-t border-ivory-200 flex items-center gap-1.5 text-[11px] text-stone-600">
+                <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                <span className="font-medium text-stone-700">
+                  Indoor Landmark Grounded (No GPS recorded)
+                </span>
+                <span className="text-stone-400">
+                  — Navigation relies on visual landmarks
+                </span>
               </div>
             )}
           </div>
@@ -295,9 +344,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                     <p className="text-charcoal-800">{obs.description}</p>
                     {obs.image_reference && (
                       <div className="pt-1">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={obs.image_reference}
+                        <SecureImage
+                          imageReference={obs.image_reference}
                           alt="Observation frame"
                           className="w-full max-h-36 object-cover rounded border border-ivory-300"
                         />

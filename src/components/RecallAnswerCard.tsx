@@ -1,7 +1,9 @@
 import React from "react";
 import { ItemObservation, TrackedItem } from "@/types";
 import { StatusChip } from "./StatusChip";
-import { MapPin, Clock, ShieldCheck, X, Sparkles, AlertCircle } from "lucide-react";
+import { SecureImage } from "./SecureImage";
+import { MapPin, Clock, ShieldCheck, X, Sparkles, AlertCircle, ExternalLink } from "lucide-react";
+import { isValidGeoCoordinates, generateCrossPlatformMapUrl } from "@/lib/geo";
 
 interface RecallAnswerCardProps {
   item: TrackedItem;
@@ -37,6 +39,15 @@ export const RecallAnswerCard: React.FC<RecallAnswerCardProps> = ({
       return "recently";
     }
   };
+
+  const hasValidCoordinates = isValidGeoCoordinates(item.coordinates);
+  const mapUrl = hasValidCoordinates && item.coordinates
+    ? generateCrossPlatformMapUrl(
+        item.coordinates.latitude,
+        item.coordinates.longitude,
+        item.item_name
+      )
+    : null;
 
   return (
     <div className="bg-forest-50/60 border border-forest-200 rounded-2xl p-5 sm:p-6 shadow-sm relative transition-all">
@@ -96,13 +107,52 @@ export const RecallAnswerCard: React.FC<RecallAnswerCardProps> = ({
           </div>
         )}
 
-        {/* GPS Coordinates Origin */}
-        {item.coordinates && (
-          <div className="pt-1.5 border-t border-forest-100 flex items-center justify-between text-[11px] text-stone-600">
-            <span className="font-mono text-forest-800 bg-forest-50 px-2 py-0.5 rounded border border-forest-100 font-medium">
-              📍 Origin GPS: {item.coordinates.latitude}° N, {Math.abs(item.coordinates.longitude)}° W
+        {/* GPS Coordinates Origin & Open in Maps Action */}
+        {hasValidCoordinates && item.coordinates && mapUrl && (
+          <div className="pt-2 border-t border-forest-100 space-y-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-stone-600">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-mono text-forest-800 bg-forest-50 px-2 py-0.5 rounded border border-forest-100 font-medium">
+                  📍 {item.coordinates.latitude.toFixed(6)}° N, {Math.abs(item.coordinates.longitude).toFixed(6)}° W (±{item.coordinates.accuracy || 10}m)
+                </span>
+                <span className="text-stone-500">
+                  (Geofence: {item.geofence_radius_meters || 50}m)
+                </span>
+              </div>
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-forest-700 hover:bg-forest-800 text-white transition-all shadow-xs shrink-0"
+                data-testid="recall-open-in-maps-button"
+              >
+                <span>Open in Maps</span>
+                <ExternalLink className="w-3.5 h-3.5 text-sage-200" />
+              </a>
+            </div>
+
+            {/* Low GPS accuracy warning */}
+            {item.coordinates.accuracy && item.coordinates.accuracy > 65 && (
+              <div className="flex items-center gap-1.5 text-[11px] text-amber-800 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>
+                  Low GPS accuracy (±{item.coordinates.accuracy}m). Visual scene landmarks above provide primary grounding.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Truthful indoor landmark representation when GPS absent */}
+        {!hasValidCoordinates && (
+          <div className="pt-2 border-t border-forest-100 flex items-center gap-1.5 text-[11px] text-stone-600">
+            <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+            <span className="font-medium text-stone-700">
+              Indoor Landmark Grounded (No GPS recorded)
             </span>
-            <span>Geofence: {item.geofence_radius_meters || 50}m</span>
+            <span className="text-stone-400">
+              — Grounding relies truthfully on visual landmarks
+            </span>
           </div>
         )}
 
@@ -112,9 +162,8 @@ export const RecallAnswerCard: React.FC<RecallAnswerCardProps> = ({
             <span className="text-[11px] text-stone-500 font-medium block mb-1">
               Scene snapshot reference:
             </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={latestObservation.image_reference}
+            <SecureImage
+              imageReference={latestObservation.image_reference}
               alt="Snapshot observation"
               className="w-full max-h-40 object-cover rounded-lg border border-ivory-300"
             />
