@@ -214,7 +214,7 @@ test("Phase 24: Real Meta Muse request building and structured response parsing"
         assert.equal(result.candidates[0].confidence, "high");
         assert.equal(result.source, "live_meta_api");
         assert.equal(result.metaModel, "muse-spark-1.3");
-        assert.ok(result.costUsd > 0);
+        assert.ok((result.costUsd ?? 0) > 0);
 
         // 4. Verify token accounting in budget manager
         const summary = budget.getSummary();

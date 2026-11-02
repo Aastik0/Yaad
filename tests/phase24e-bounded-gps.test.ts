@@ -403,9 +403,8 @@ test("Phase 24E: resolveItemNavigationStatus suspends directions when accuracy >
     category: "Keys",
     last_location_description: "Near front door console",
     last_landmarks: ["wooden console table", "key hook"],
-    last_seen_at: new Date().toISOString(),
-    status: "active",
-    created_at: new Date().toISOString(),
+    last_observed_at: new Date().toISOString(),
+    status: "tracked_unconfirmed",
     updated_at: new Date().toISOString(),
     coordinates: {
       latitude: 37.7751,
@@ -432,9 +431,8 @@ test("Phase 24E: resolveItemNavigationStatus allows directions when accuracy <= 
     category: "Wallet",
     last_location_description: "On study desk",
     last_landmarks: ["wooden study desk", "laptop"],
-    last_seen_at: new Date().toISOString(),
-    status: "active",
-    created_at: new Date().toISOString(),
+    last_observed_at: new Date().toISOString(),
+    status: "tracked_unconfirmed",
     updated_at: new Date().toISOString(),
     coordinates: {
       latitude: 37.7780,

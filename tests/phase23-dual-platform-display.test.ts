@@ -70,7 +70,7 @@ test("Phase 23: AnalyzeRequestSchema accepts glasses_sdk payloads from Display H
 });
 
 test("Phase 23: Shared persistence persists memories created on Display HUD and makes them accessible to Unity client", async () => {
-  const repo = new LocalStorageRepository("demo-user-dual-platform");
+  const repo = new LocalStorageRepository();
   const now = new Date().toISOString();
 
   const newObs: ItemObservation = {
