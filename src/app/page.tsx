@@ -14,10 +14,9 @@ import { DeveloperDrawer } from "@/components/DeveloperDrawer";
 import { GlassesSimulatorModal } from "@/components/GlassesSimulatorModal";
 import { AuthModal } from "@/components/AuthModal";
 import { ImportDemoDataModal } from "@/components/ImportDemoDataModal";
-import { VoiceInteraction } from "@/components/VoiceInteraction";
 import { LocationDepartureMonitor } from "@/components/LocationDepartureMonitor";
 import { NavigationHandoffCard } from "@/components/NavigationHandoffCard";
-import { speakRecallResult, speakNavigationGuidance } from "@/lib/speech";
+import { speakRecallResult, speakNavigationGuidance, speakCalmReminder } from "@/lib/speech";
 import {
   DEFAULT_DEMO_COORDINATES,
   resolveItemNavigationStatus,
@@ -135,9 +134,36 @@ export default function Home() {
   const handleVoiceRecall = useCallback(
     (query: string, targetItem?: string) => {
       const effectiveQuery = targetItem || query;
-      setSearchQuery(effectiveQuery);
       setDismissedRecallQuery(null);
       setNavigationResult(null);
+
+      // Support broad inventory inquiries (e.g. "What did I ask you to remember?")
+      const isBroadQuery =
+        effectiveQuery === "all_belongings" ||
+        /^(what did i ask you to remember|what do you remember|what are my belongings|what items are you tracking)/i.test(
+          query.trim()
+        );
+
+      if (isBroadQuery) {
+        setSearchQuery(""); // Clear filter so user sees full list of belongings
+        const count = trackedItems.length;
+        if (count > 0) {
+          const sample = trackedItems
+            .map((i) => i.item_name)
+            .slice(0, 3)
+            .join(", ");
+          speakCalmReminder(
+            `You asked me to remember ${count} belonging${count > 1 ? "s" : ""}, including ${sample}. All memories reflect past recorded observations.`
+          );
+        } else {
+          speakCalmReminder(
+            "You haven't recorded any belongings yet. Tap Remember Belongings to record what you set down."
+          );
+        }
+        return;
+      }
+
+      setSearchQuery(effectiveQuery);
 
       const match = findMatchingTrackedItem(effectiveQuery);
       if (match) {
@@ -146,7 +172,7 @@ export default function Home() {
         speakRecallResult(effectiveQuery, null);
       }
     },
-    [findMatchingTrackedItem]
+    [findMatchingTrackedItem, trackedItems]
   );
 
   const handleVoiceNavigate = useCallback(
@@ -422,22 +448,20 @@ export default function Home() {
         hasLocalDataToImport={hasLocalDataToImport}
       />
 
-      {/* Cloud Active Notice */}
-      {user && (
-        <div className="bg-emerald-50 border-b border-emerald-200 py-1.5 px-4 text-xs text-emerald-900 flex items-center justify-between">
-          <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Cloud className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Cloud Persistence Active: Connected to private Supabase tenant for <strong>{user.email}</strong></span>
+      {/* Local Data Import Notice (Only if there are offline demo items to migrate) */}
+      {user && hasLocalDataToImport && (
+        <div className="bg-forest-50 border-b border-forest-200/80 py-2 px-4 text-xs text-forest-900">
+          <div className="max-w-6xl w-full mx-auto flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-forest-700 shrink-0" />
+              <span>You have items saved locally on this browser. Would you like to import them to your account?</span>
             </span>
-            {hasLocalDataToImport && (
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="underline hover:text-emerald-950 font-semibold cursor-pointer text-[11px]"
-              >
-                Import Demo Items
-              </button>
-            )}
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-forest-700 text-ivory-50 hover:bg-forest-800 font-medium transition-colors text-xs shrink-0 cursor-pointer"
+            >
+              Import Items
+            </button>
           </div>
         </div>
       )}
@@ -457,7 +481,7 @@ export default function Home() {
         {/* Belongings Tracking Tab (Primary USP) */}
         {activeTab === "belongings" && (
           <div className="space-y-8">
-            {/* Hero CTA & Search / Recall */}
+            {/* Hero CTA & Unified Search / Voice Recall */}
             <HeroCta
               onCaptureClick={() => setIsCaptureModalOpen(true)}
               onSimulateDeparture={() => setIsDepartureModalOpen(true)}
@@ -467,31 +491,9 @@ export default function Home() {
                 setDismissedRecallQuery(null);
               }}
               unconfirmedCount={unconfirmedItems.length}
+              onVoiceRecall={handleVoiceRecall}
+              onVoiceNavigate={handleVoiceNavigate}
             />
-
-            {/* Voice Interaction Controller (Phase 21C) */}
-            <VoiceInteraction
-              onRemember={() => setIsCaptureModalOpen(true)}
-              onRecall={handleVoiceRecall}
-              onNavigate={handleVoiceNavigate}
-            />
-
-            {/* Foreground Location & Departure Monitor (Phase 21D) */}
-            <LocationDepartureMonitor
-              unconfirmedItems={unconfirmedItems}
-              onMarkCollected={handleMarkCollected}
-              onMarkLeftBehind={handleMarkLeftBehind}
-              onLocationUpdate={(coords) => setActiveGpsCoords(coords)}
-            />
-
-            {/* Grounded Navigation Handoff Card (Phase 21E) */}
-            {navigationResult && (
-              <NavigationHandoffCard
-                resolution={navigationResult}
-                onMarkCollected={handleMarkCollected}
-                onClose={() => setNavigationResult(null)}
-              />
-            )}
 
             {/* Contextual Grounded Recall Answer Card */}
             {recallResult && (
@@ -502,6 +504,23 @@ export default function Home() {
                 onClose={() => setDismissedRecallQuery(searchQuery)}
               />
             )}
+
+            {/* Grounded Navigation Handoff Card (Phase 21E) */}
+            {navigationResult && (
+              <NavigationHandoffCard
+                resolution={navigationResult}
+                onMarkCollected={handleMarkCollected}
+                onClose={() => setNavigationResult(null)}
+              />
+            )}
+
+            {/* Ambient Departure Guard & Breach Alerts (Phase 21D) */}
+            <LocationDepartureMonitor
+              unconfirmedItems={unconfirmedItems}
+              onMarkCollected={handleMarkCollected}
+              onMarkLeftBehind={handleMarkLeftBehind}
+              onLocationUpdate={(coords) => setActiveGpsCoords(coords)}
+            />
 
             {/* Belongings List Section */}
             <TrackedBelongingsSection

@@ -21,11 +21,12 @@ export function useSignedImageUrl(imageReference?: string | null): {
       return;
     }
 
-    // Direct local base64 or web URLs don't need async signed URL resolution
+    // Direct local base64, root-relative, or web URLs don't need async signed URL resolution
     if (
       imageReference.startsWith("data:") ||
       imageReference.startsWith("http://") ||
-      imageReference.startsWith("https://")
+      imageReference.startsWith("https://") ||
+      imageReference.startsWith("/")
     ) {
       setUrl(imageReference);
       setIsLoading(false);

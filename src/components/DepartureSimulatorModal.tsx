@@ -17,6 +17,7 @@ import {
   Sliders,
 } from "lucide-react";
 import { speakCalmReminder, stopSpeech } from "@/lib/speech";
+import { SecureImage } from "./SecureImage";
 
 interface DepartureSimulatorModalProps {
   isOpen: boolean;
@@ -271,20 +272,31 @@ export const DepartureSimulatorModal: React.FC<DepartureSimulatorModalProps> = (
                       : "border-amber-200 bg-amber-50/40"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-xs uppercase font-semibold tracking-wider text-stone-500">
-                        {item.category || "Belonging"}
-                      </span>
-                      <h4 className="text-sm font-semibold text-forest-900">
-                        {item.item_name}
-                      </h4>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl overflow-hidden border border-ivory-300 bg-white shrink-0 shadow-2xs">
+                        <SecureImage
+                          imageReference={item.image_reference}
+                          itemCategory={item.category}
+                          itemName={item.item_name}
+                          alt={item.item_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500">
+                          {item.category || "Belonging"}
+                        </span>
+                        <h4 className="text-sm font-semibold text-charcoal-900">
+                          {item.item_name}
+                        </h4>
+                      </div>
                     </div>
 
                     <span
                       className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
                         isOutsideRadius
-                          ? "bg-terracotta-100 text-terracotta-800 border-terracotta-200"
+                          ? "bg-rose-100 text-rose-800 border-rose-200"
                           : "bg-amber-100 text-amber-800 border-amber-200"
                       }`}
                     >

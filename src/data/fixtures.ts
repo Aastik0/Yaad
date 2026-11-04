@@ -1,4 +1,5 @@
 import type { ItemObservation, TrackedItem, PersonMemory } from "../types/index.ts";
+import { DUMMY_SCENE_IMAGES } from "../lib/dummyImages.ts";
 
 export const DEMO_USER_ID = "demo-user-yaad-01";
 
@@ -23,6 +24,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "On the wooden coffee table near the ceramic coffee mug",
     last_landmarks: ["wooden coffee table", "ceramic coffee mug", "open notebook"],
     last_observed_at: FIXTURE_T_MINUS_42M,
+    image_reference: DUMMY_SCENE_IMAGES.keys,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -42,6 +44,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "On the café round bistro table next to the laptop charger",
     last_landmarks: ["round bistro table", "laptop charger", "water glass"],
     last_observed_at: FIXTURE_T_MINUS_25M,
+    image_reference: DUMMY_SCENE_IMAGES.wallet,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -61,6 +64,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "Beside the backpack on the side chair",
     last_landmarks: ["side chair", "green canvas backpack"],
     last_observed_at: FIXTURE_T_MINUS_95M,
+    image_reference: DUMMY_SCENE_IMAGES.waterBottle,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -80,6 +84,7 @@ export const INITIAL_TRACKED_ITEMS: TrackedItem[] = [
     last_location_description: "Left on the hall console table near the front door key dish",
     last_landmarks: ["hall console table", "ceramic key dish", "mail stack"],
     last_observed_at: FIXTURE_T_MINUS_180M,
+    image_reference: DUMMY_SCENE_IMAGES.glasses,
     coordinates: {
       latitude: 37.7785,
       longitude: -122.4121,
@@ -103,6 +108,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "high",
     observed_at: FIXTURE_T_MINUS_42M,
     source: "browser_camera",
+    image_reference: DUMMY_SCENE_IMAGES.keys,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -123,6 +129,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "high",
     observed_at: FIXTURE_T_MINUS_25M,
     source: "browser_upload",
+    image_reference: DUMMY_SCENE_IMAGES.wallet,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -143,6 +150,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "medium",
     observed_at: FIXTURE_T_MINUS_95M,
     source: "browser_upload",
+    image_reference: DUMMY_SCENE_IMAGES.waterBottle,
     coordinates: {
       latitude: 37.7749,
       longitude: -122.4194,
@@ -163,6 +171,7 @@ export const INITIAL_OBSERVATIONS: ItemObservation[] = [
     confidence: "high",
     observed_at: FIXTURE_T_MINUS_180M,
     source: "browser_upload",
+    image_reference: DUMMY_SCENE_IMAGES.glasses,
     coordinates: {
       latitude: 37.7785,
       longitude: -122.4121,

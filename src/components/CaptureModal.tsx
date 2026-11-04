@@ -743,12 +743,30 @@ export const CaptureModal: React.FC<CaptureModalProps> = ({
                     )}
 
                     {cameraError && (
-                      <div className="p-4 text-center text-ivory-100 space-y-2 max-w-sm">
-                        <AlertCircle className="w-6 h-6 text-terracotta-500 mx-auto" />
+                      <div className="p-4 text-center text-ivory-100 space-y-3 max-w-sm">
+                        <AlertCircle className="w-6 h-6 text-terracotta-400 mx-auto" />
                         <p className="text-xs font-medium leading-relaxed">{cameraError}</p>
-                        <p className="text-[11px] text-stone-400">
-                          You can switch to File Upload above to select a photo from disk.
-                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              stopCameraStream();
+                              setActiveTab("upload");
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium border border-white/20 transition-colors"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Switch to Upload</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-forest-600 hover:bg-forest-500 text-white text-xs font-medium transition-colors"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Retry Camera</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

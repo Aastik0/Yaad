@@ -299,6 +299,7 @@ test("Phase 20 E2E: /api/recall privacy and input sanitization", async () => {
 
 test("Phase 20 E2E: Vision Provider Safeguards enforce all 5 gates and preserve $75 budget limit", () => {
   const budget = BudgetManager.getInstance();
+  budget.resetForTesting(75.0);
   const summary = budget.getSummary();
   assert.equal(summary.budgetCapUsd, 75);
   assert.equal(summary.totalCostUsd, 0, "No paid inference has occurred ($0.00 spent)");

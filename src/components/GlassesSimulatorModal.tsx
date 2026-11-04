@@ -476,6 +476,17 @@ export const GlassesSimulatorModal: React.FC<GlassesSimulatorModalProps> = ({
 
         {/* Content Body */}
         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+          {/* Honest Disclosure Banner */}
+          <div className="px-3 py-1.5 rounded-lg bg-forest-50/70 border border-forest-200/60 flex items-center justify-between gap-2 text-[11px] text-forest-900">
+            <span className="font-medium flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-forest-600 shrink-0" />
+              Hardware Simulation Mode
+            </span>
+            <span className="text-stone-500 text-[10px] hidden sm:inline">
+              Grounded in last recorded snapshot &bull; Not live continuous tracking
+            </span>
+          </div>
+
           {/* Device Telemetry Status Bar */}
           <div className="p-2.5 rounded-xl bg-ivory-100 border border-ivory-300 flex items-center justify-between text-xs text-charcoal-800 flex-wrap gap-2">
             <div className="flex items-center gap-3">

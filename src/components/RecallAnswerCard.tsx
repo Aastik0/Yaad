@@ -13,6 +13,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import { isValidGeoCoordinates, generateCrossPlatformMapUrl } from "@/lib/geo";
+import { getItemDummySceneImage } from "@/lib/dummyImages";
 
 interface RecallAnswerCardProps {
   item: TrackedItem;
@@ -69,7 +70,9 @@ export const RecallAnswerCard: React.FC<RecallAnswerCardProps> = ({
       : null;
 
   const effectiveImageRef =
-    latestObservation?.image_reference || item.image_reference || null;
+    latestObservation?.image_reference ||
+    item.image_reference ||
+    getItemDummySceneImage(item.category, item.item_name);
 
   return (
     <div className="bg-forest-50/60 border border-forest-200 rounded-2xl p-5 sm:p-6 shadow-sm relative transition-all">

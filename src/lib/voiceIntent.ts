@@ -36,8 +36,8 @@ function cleanItemName(rawItem: string): string {
   let cleaned = rawItem.trim();
   // Strip leading "my", "the", "a", "an", "this", "these", "our"
   cleaned = cleaned.replace(/^(my|the|a|an|this|these|our)\s+/i, "").trim();
-  // Strip trailing question / location filler like "again", "today", "now"
-  cleaned = cleaned.replace(/\s+(again|today|now|please)$/i, "").trim();
+  // Strip trailing question / location filler like "last seen", "seen", "again", "today", "now"
+  cleaned = cleaned.replace(/\s+(last\s+seen|seen|left|put|located|again|today|now|please)$/i, "").trim();
   return cleaned;
 }
 
@@ -89,7 +89,32 @@ export function parseVoiceIntent(transcript: string): ParsedVoiceIntent {
   }
 
   // 2. RECALL INTENTS
-  // "where are my keys", "where is my wallet", "where did i last see my glasses", "find my backpack"
+  // 2A. Broad Inventory Recall ("what did i ask you to remember", "what do you remember", "what are my belongings")
+  const broadRecallPatterns = [
+    /^(?:what\s+did\s+i\s+(?:ask|tell)\s+(?:you\s+)?to\s+remember)$/i,
+    /^(?:what\s+(?:items|belongings|things)\s+did\s+i\s+(?:ask|tell)\s+(?:you\s+)?to\s+remember)$/i,
+    /^(?:what\s+are\s+my\s+(?:items|belongings|things|possessions))$/i,
+    /^(?:what\s+(?:items|belongings)\s+are\s+you\s+tracking)$/i,
+    /^(?:what\s+do\s+you\s+remember)$/i,
+    /^(?:show\s+(?:me\s+)?(?:all\s+)?(?:my\s+)?(?:belongings|items|memories))$/i,
+    /^(?:list\s+(?:all\s+)?(?:my\s+)?(?:belongings|items|memories))$/i,
+  ];
+
+  for (const pattern of broadRecallPatterns) {
+    if (pattern.test(prompt)) {
+      return {
+        type: "RECALL",
+        rawTranscript: raw,
+        normalizedQuery: prompt,
+        targetItem: "all_belongings",
+        confidence: 0.95,
+        explanation: "Broad memory recall querying all tracked belongings.",
+      };
+    }
+  }
+
+  // 2B. Specific Item Recall
+  // "where are my keys", "where is my wallet", "where was my wallet last seen", "find my backpack"
   const recallPatterns = [
     /^(?:where\s+are|where\s+is|where\s+did\s+i\s+last\s+see|where\s+did\s+i\s+leave|where\s+did\s+i\s+put|where\s+was)\s+(.+)$/i,
     /^(?:where\s+s)\s+(.+)$/i, // normalized form of "where's"

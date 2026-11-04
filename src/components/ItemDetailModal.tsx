@@ -15,8 +15,11 @@ import {
   AlertTriangle,
   RefreshCw,
   ExternalLink,
+  Maximize2,
+  Camera,
 } from "lucide-react";
 import { generateGoogleMapsUrl, generateAppleMapsUrl, isValidGeoCoordinates } from "@/lib/geo";
+import { getItemDummySceneImage } from "@/lib/dummyImages";
 
 interface ItemDetailModalProps {
   isOpen: boolean;
@@ -43,6 +46,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editedCategory, setEditedCategory] = useState("");
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   if (!isOpen || !item) return null;
 
@@ -169,12 +173,48 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                   </div>
                 </div>
 
-                <h2 className="text-xl font-semibold text-forest-900 mt-1">
+                <h2 className="text-xl font-bold text-charcoal-900 mt-1">
                   {item.item_name}
                 </h2>
 
                 <div className="mt-2 flex items-center gap-2">
                   <StatusChip status={item.status} size="md" />
+                </div>
+
+                {/* Original Scene Photograph with Expand */}
+                <div className="mt-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-stone-500 font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-forest-700" />
+                      <span>Scene Photograph at Observation</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsLightboxOpen(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-forest-700 hover:text-forest-900 transition-colors cursor-pointer"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                      <span>Expand Photo</span>
+                    </button>
+                  </div>
+                  <div
+                    onClick={() => setIsLightboxOpen(true)}
+                    className="relative rounded-2xl overflow-hidden border border-ivory-300 bg-ivory-100 group cursor-pointer shadow-xs hover:border-forest-600 transition-all"
+                  >
+                    <SecureImage
+                      imageReference={item.image_reference || itemObservations[0]?.image_reference}
+                      itemCategory={item.category}
+                      itemName={item.item_name}
+                      alt={`Original scene for ${item.item_name}`}
+                      className="w-full max-h-48 object-cover group-hover:scale-[1.01] transition-transform duration-200"
+                    />
+                    <div className="absolute inset-0 bg-charcoal-950/0 group-hover:bg-charcoal-950/20 transition-colors flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 bg-charcoal-900/80 backdrop-blur-xs text-white text-[11px] font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-opacity">
+                        <Maximize2 className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>Click to view full photo</span>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -371,12 +411,81 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-ivory-200 hover:bg-ivory-300 text-xs font-semibold text-charcoal-800 transition-colors"
+            className="px-4 py-1.5 rounded-xl bg-forest-700 hover:bg-forest-800 text-xs font-semibold text-white transition-colors cursor-pointer shadow-xs"
           >
             Done
           </button>
         </div>
       </div>
+
+      {/* High-Resolution Scene Lightbox Modal */}
+      {isLightboxOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Expanded scene view for ${item.item_name}`}
+          className="fixed inset-0 z-60 bg-charcoal-950/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-ivory-300 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Lightbox Header */}
+            <div className="px-5 py-4 bg-ivory-50 border-b border-ivory-200 flex items-center justify-between">
+              <div>
+                <h4 className="text-sm sm:text-base font-bold text-charcoal-900">
+                  {item.item_name} — Original Scene Snapshot
+                </h4>
+                <p className="text-xs text-stone-500">
+                  {item.last_location_description} · Recorded at {item.last_observed_at.slice(0, 10)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(false)}
+                className="p-1.5 rounded-xl text-stone-400 hover:text-charcoal-800 hover:bg-ivory-200 transition-colors cursor-pointer"
+                title="Close lightbox"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Lightbox Image Viewport */}
+            <div className="p-4 sm:p-6 bg-charcoal-950/5 flex items-center justify-center overflow-auto max-h-[70vh]">
+              <SecureImage
+                imageReference={item.image_reference || itemObservations[0]?.image_reference}
+                itemCategory={item.category}
+                itemName={item.item_name}
+                alt={`Original scene for ${item.item_name}`}
+                className="w-full max-h-[64vh] object-contain rounded-2xl shadow-lg border border-ivory-200"
+              />
+            </div>
+
+            {/* Lightbox Footer with Landmark chips */}
+            <div className="px-5 py-3.5 bg-ivory-50 border-t border-ivory-200 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-semibold text-stone-500">Visual Landmarks:</span>
+                {item.last_landmarks.map((lm, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-0.5 rounded-lg bg-white border border-ivory-300 text-charcoal-800 text-[11px]"
+                  >
+                    {lm}
+                  </span>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(false)}
+                className="px-3 py-1.5 rounded-xl bg-forest-700 text-white font-semibold text-xs hover:bg-forest-800 transition-colors cursor-pointer shrink-0"
+              >
+                Close View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

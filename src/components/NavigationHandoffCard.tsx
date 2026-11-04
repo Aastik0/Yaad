@@ -14,6 +14,7 @@ import {
   Navigation,
 } from "lucide-react";
 import type { NavigationResolutionResult } from "../lib/geo.ts";
+import { SecureImage } from "./SecureImage";
 
 export interface NavigationHandoffCardProps {
   resolution: NavigationResolutionResult;
@@ -83,9 +84,21 @@ export const NavigationHandoffCard: React.FC<NavigationHandoffCardProps> = ({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3.5">
-          <div className="p-3 rounded-xl bg-purple-100 text-purple-700 shrink-0 mt-0.5">
-            <Navigation className="w-6 h-6" />
-          </div>
+          {item ? (
+            <div className="w-14 h-14 rounded-2xl overflow-hidden border border-purple-200 bg-purple-50 shrink-0 shadow-2xs mt-0.5">
+              <SecureImage
+                imageReference={item.image_reference}
+                itemCategory={item.category}
+                itemName={item.item_name}
+                alt={item.item_name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl bg-purple-100 text-purple-700 shrink-0 mt-0.5">
+              <Navigation className="w-6 h-6" />
+            </div>
+          )}
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-purple-800">

@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAF8F5;
-  --foreground: #1C2520;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
   --card-bg: #FFFFFF;
-  --card-border: #E8E4DC;
-  --forest-primary: #1E3A2B;
-  --forest-hover: #162C20;
-  --sage-accent: #6B7C67;
-  --sage-light: #EBF1EA;
+  --card-border: #E2E8F0;
+  --forest-primary: #047857;
+  --forest-hover: #065F46;
+  --sage-accent: #10B981;
+  --sage-light: #ECFDF5;
 }
 
 body {
@@ -23,7 +23,7 @@ body {
 
 /* Accessible focus styling */
 *:focus-visible {
-  outline: 2px solid #1E3A2B;
+  outline: 2px solid #047857;
   outline-offset: 2px;
 }
 
@@ -33,13 +33,13 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #FAF8F5;
+  background: #F1F5F9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D5CFBF;
+  background: #CBD5E1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #B8B09E;
+  background: #94A3B8;
 }
 
